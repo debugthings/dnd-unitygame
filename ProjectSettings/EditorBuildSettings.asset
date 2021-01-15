@@ -4,5 +4,14 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/StrartMenu.unity
+    guid: 30ee5031729acd045b41840e2b1a7f2f
+  - enabled: 1
+    path: Assets/Scenes/CreateGame.unity
+    guid: e8eb8344278f0dc4596f3bb2d4e794f5
+  - enabled: 1
+    path: Assets/Scenes/JoinGame.unity
+    guid: 8b0516774cb9013488509395579aa6c8
   m_configObjects: {}
