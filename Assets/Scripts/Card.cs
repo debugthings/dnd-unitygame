@@ -31,14 +31,19 @@ public class Card : MonoBehaviour
     }
     private void LoadCardBackSpriteToClass(AsyncOperationHandle<Sprite[]> obj)
     {
-        sprites.Add(CardBack, obj.Result.First());
+        sprites[CardBack] = obj.Result.First();
         spriteRenderer.sprite = sprites[CardBack];
     }
 
     private void LoadCardFrontSpriteToClass(AsyncOperationHandle<Sprite[]> obj)
     {
-        sprites.Add(CardFront, obj.Result.First());
+        sprites[CardFront] = obj.Result.First();
+    }
 
+    public void Dim(bool dim)
+    {
+        var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
+        spriteRenderer.color = dimColor;
     }
 
     // Start is called before the first frame update
@@ -50,6 +55,11 @@ public class Card : MonoBehaviour
     public void Hide()
     {
         gameObject.SetActive(false);
+    }
+
+    public void Unhide()
+    {
+        gameObject.SetActive(true);
     }
     private string GenerateFileName()
     {

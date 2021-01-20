@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 2018970124626980799}
   - component: {fileID: 5176169234410614562}
   m_Layer: 0
-  m_Name: Card 1 (2)
-  m_TagString: Untagged
+  m_Name: DimmableCard5
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -25,7 +25,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 819053890567162938}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.53, y: 0.009, z: 0}
+  m_LocalPosition: {x: 1.53, y: 0.009, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 8240977832005720465}
@@ -92,8 +92,8 @@ GameObject:
   - component: {fileID: 8282362412976650382}
   - component: {fileID: 1056601814338712729}
   m_Layer: 0
-  m_Name: Card 1 (1)
-  m_TagString: Untagged
+  m_Name: DimmableCard3
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -106,7 +106,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5290106466643303142}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.756, y: 0, z: 0}
+  m_LocalPosition: {x: 0.756, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 8240977832005720465}
@@ -173,8 +173,8 @@ GameObject:
   - component: {fileID: 8018012696017894968}
   - component: {fileID: 2399984431924112256}
   m_Layer: 0
-  m_Name: Card 2
-  m_TagString: Untagged
+  m_Name: DimmableCard2
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -187,7 +187,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6319701816605958970}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.417, y: 0.009, z: 0}
+  m_LocalPosition: {x: 0.417, y: 0.009, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 8240977832005720465}
@@ -254,8 +254,8 @@ GameObject:
   - component: {fileID: 1128470032497625364}
   - component: {fileID: 8339823490718658590}
   m_Layer: 0
-  m_Name: Card 2 (1)
-  m_TagString: Untagged
+  m_Name: DimmableCard4
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -268,7 +268,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8129056358762685036}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.173, y: 0.009, z: 0}
+  m_LocalPosition: {x: 1.173, y: 0.009, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 8240977832005720465}
@@ -374,6 +374,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardPrefab: {fileID: -3085730074788725339, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
     type: 3}
+  playedCard: {fileID: 0}
 --- !u!1 &8451955777714847758
 GameObject:
   m_ObjectHideFlags: 0
@@ -385,8 +386,8 @@ GameObject:
   - component: {fileID: 438104346708593817}
   - component: {fileID: 2809148843905088604}
   m_Layer: 0
-  m_Name: Card 1
-  m_TagString: Untagged
+  m_Name: DimmableCard1
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -399,7 +400,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8451955777714847758}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 8240977832005720465}

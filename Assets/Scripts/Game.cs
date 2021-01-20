@@ -250,6 +250,7 @@ public class Game : MonoBehaviour
             ply.SetName(s);
             ply.name = s;
             this.players.Add(ply);
+            ply.DimCards(true);
         }
 
         return totalPlayer;
@@ -368,7 +369,7 @@ public class Game : MonoBehaviour
     {
         var v3 = card.transform.position;
         rand.NextFloat(-0.06f, 0.06f);
-        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, 0.06f), v3.y + rand.NextFloat(0.02f, 0.06f), (v3.z + maxStackDepth) - (count+1) * cardStackZOrderOffset), Quaternion.identity);
+        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, 0.06f), v3.y + rand.NextFloat(0.02f, 0.06f), (v3.z + maxStackDepth) - (count + 1) * cardStackZOrderOffset), Quaternion.identity);
         card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-2.0f, 2.0f);
     }
 
@@ -390,10 +391,10 @@ public class Game : MonoBehaviour
         //Console.WriteLine($"It is {player.Name}'s turn!");
         //WhatsOnTheDiscard(firstPlay);
 
-       
+
         if (c != Card.Empty && player == players.Current())
         {
-            PerformGameAction(c,  false);
+            PerformGameAction(c, false);
         }
 
         if (player.CheckWin())
@@ -401,11 +402,53 @@ public class Game : MonoBehaviour
             Console.WriteLine($"{player.Name} wins!");
             return;
         }
+        // Update my hand to show the cards I got...
         HumanPlayer.FixupCardPositions();
-        players.Next();
-
-
+        var compPlayer = players.Next();
+        if (compPlayer is ComputerPlayer)
+        {
+            var playerRef = compPlayer as ComputerPlayer;
+            playerRef.DimCards(false);
+        }
+        Invoke("CheckAndExecuteComputerPlayerAction", 3.0f);
     }
+
+    private void CheckAndExecuteComputerPlayerAction()
+    {
+        if (CurrentPlayer is ComputerPlayer)
+        {
+            var playerRef = CurrentPlayer as ComputerPlayer;
+            try
+            {
+                var card = playerRef.PlayCard(TopCardOnDiscard, false);
+                if (card == null)
+                {
+                    playerRef.AddCard(TakeFromDealPile());
+                    GameLoop(Card.Empty, playerRef);
+                }
+                else
+                {
+                    GameLoop(card, playerRef);
+                }
+            }
+            catch (Exception ex)
+            {
+                string s = "s";
+            }
+            finally
+            {
+            }
+            playerRef.DimCards(true);
+
+        }
+    }
+
+    private void DimPlayer()
+    {
+        var playerRef = CurrentPlayer as ComputerPlayer;
+        playerRef.DimCards(false);
+    }
+
 
     /// <summary>
     /// Puts the card back in a pseudo random spot that is at least 2n numbers of players into the middle up to n number of players from the bottom. 

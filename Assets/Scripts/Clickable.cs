@@ -39,9 +39,11 @@ public class Clickable : MonoBehaviour
                 {
                     // Clickable is parented by the "GameBoard" object which is an instance of Game
                     var game = gameObject.GetComponentInParent<Game>();
-
+                    var currentPlayer = game.CurrentPlayer;
                     var cardObjectHitTest = hit.collider.gameObject.GetComponent<Card>();
-                    if (cardObjectHitTest is Card)
+
+                    // Right now in a local game ONLY the human player can make a move
+                    if (cardObjectHitTest is Card && currentPlayer == game.HumanPlayer)
                     {
                         var cardToCheck = (cardObjectHitTest as Card);
                         if (cardToCheck != null)
@@ -51,20 +53,16 @@ public class Clickable : MonoBehaviour
                                 // If we're in play and the player decides to draw, either the card will be played or added to the hand.
                                 // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
                                 // the click originated from the player.
-                                var player = game.CurrentPlayer;
                                 var cardToPlay = game.TakeFromDealPile();
                                 if (cardToPlay.CanPlay(game.TopCardOnDiscard))
                                 {
                                     cardToPlay.FlipCardOver();
-                                    game.GameLoop(cardToPlay, player);
-
-                                } else
-                                {
-                                    player.AddCard(cardToPlay);
+                                    game.GameLoop(cardToPlay, game.HumanPlayer);
                                 }
-
-                                game.HumanPlayer.FixupCardPositions();
-
+                                else
+                                {
+                                    game.HumanPlayer.AddCard(cardToPlay);
+                                }
                             }
                             else if (cardToCheck.gameObject.name.Equals("DiscardDeck", StringComparison.InvariantCultureIgnoreCase))
                             {
@@ -75,9 +73,9 @@ public class Clickable : MonoBehaviour
                                 var player = cardObjectHitTest.GetComponentInParent<Player>();
                                 player.PlayCard(cardObjectHitTest, false);
                                 game.GameLoop(cardObjectHitTest, player);
-                                game.HumanPlayer.FixupCardPositions();
                             }
                         }
+                        game.HumanPlayer.FixupCardPositions();
 
                     }
                     ResetClick();
@@ -94,10 +92,5 @@ public class Clickable : MonoBehaviour
     {
         startTime = -1.0f;
         this.lastClicked = null;
-    }
-
-    public void OnPointerDown(PointerEventData eventData)
-    {
-        throw new System.NotImplementedException();
     }
 }

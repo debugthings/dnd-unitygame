@@ -8,6 +8,7 @@ public class Player : MonoBehaviour
     private const float zOrderSpacing = 0.01f;
     private const float horizontalSpacing = 0.5f;
     public Card cardPrefab;
+    public volatile Card playedCard = null;
     private int turnCounter = 0;
     public Game CurrentGame { get; set; }
     // Start is called before the first frame update

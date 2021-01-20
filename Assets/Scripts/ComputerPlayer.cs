@@ -16,47 +16,48 @@ public class ComputerPlayer : Player
     {
 
     }
+
+    public void DimCards(bool dim)
+    {
+        var allCards = transform.GetComponentsInChildren<SpriteRenderer>();
+        foreach (var item in allCards)
+        {
+            if (item.tag == "Dimmable")
+            {
+                var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
+                item.color = dimColor;
+            }
+        }
+    }
     public override void AddCard(Card cardToAdd)
     {
         cardToAdd.Hide();
+        cardToAdd.transform.SetParent(this.transform);
         base.AddCardToHand(cardToAdd);
     }
+
     public override Card PlayCard(Card cardToPlayAgainst, bool addToHand)
     {
-        System.Threading.Thread.Sleep(1000);
         var cardToRetun = Card.Empty;
 
         for (int i = 0; i < Hand.Count; i++)
         {
             if (Hand[i].CanPlay(cardToPlayAgainst))
             {
-                Console.Write($"{Name} played ");
-                Hand[i].WriteCard(false);
                 if (Hand[i].Color == Card.CardColor.Wild)
                 {
                     ChooseWildColor(Hand[i], new System.Random().Next(1, 5));
+                    Hand[i].SetProps(Hand[i].Value, Hand[i].WildColor);
                 }
                 Console.WriteLine();
                 cardToRetun = Hand[i];
+                cardToRetun.FlipCardOver();
+                cardToRetun.Unhide();
+                cardToRetun.Dim(false);
                 Hand.Remove(cardToRetun);
+                playedCard = cardToRetun;
                 return cardToRetun;
             }
-        }
-
-        if (canDrawAgain)
-        {
-            canDrawAgain = false;
-            return Card.DrawOnce;
-        }
-
-
-        if (lastCardPulled.CanPlay(cardToPlayAgainst))
-        {
-            cardToRetun = lastCardPulled;
-            Console.WriteLine("Card pulled from the deck is a match so it must be played.");
-            Hand.Remove(lastCardPulled);
-            RestHand();
-            return cardToRetun;
         }
 
         RestHand();
