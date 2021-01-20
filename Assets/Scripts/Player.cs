@@ -5,23 +5,17 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    private const float zOrderSpacing = 0.01f;
-    private const float horizontalSpacing = 0.5f;
-    public Card cardPrefab;
-    public volatile Card playedCard = null;
+    protected const float zOrderSpacing = 0.01f;
+    protected const float horizontalSpacing = 0.8f;
+    protected const float maxJitterTranslation = 0.06f;
+    protected const float maxJitterRotation = 2.0f;
+    protected Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
+
+    private Card cardPrefab;
     private int turnCounter = 0;
     public Game CurrentGame { get; set; }
-    // Start is called before the first frame update
-    void Start()
-    {
 
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
+    public event EventHandler<Card> HandChangedEvent;
 
     /// <summary>
     /// The player's hand.
@@ -37,7 +31,20 @@ public class Player : MonoBehaviour
 
     protected Card lastCardPulled = Card.Empty;
 
-    protected bool canDrawAgain = true;
+    // Start is called before the first frame update
+    void Start()
+    {
+    }
+
+    void Awake()
+    {
+        InitializePlayer();
+    }
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
 
     /// <summary>
     /// Creates a new player instance.
@@ -66,7 +73,7 @@ public class Player : MonoBehaviour
                 // TODO add a prompt that will allow the player to select the correct color.
                 AskAboutWild(myCard);
             }
-            Hand.Remove(myCard);
+            RemoveCard(myCard);
             return myCard;
         }
         // Only add it if it can't be played...
@@ -75,11 +82,22 @@ public class Player : MonoBehaviour
             AddCard(myCard);
         }
 
-        if (turnCounter > maxTrys)
+        if (turnCounter++ > maxTrys)
         {
             return Card.DrawAndSkip;
         }
         return Card.Empty;
+    }
+
+    protected void HandChanged(object sender, Card card)
+    {
+        FixupCardPositions();
+    }
+
+    public virtual void RemoveCard(Card cardToRemove)
+    {
+        Hand.Remove(cardToRemove);
+        HandChangedEvent(this, cardToRemove);
     }
 
     /// <summary>
@@ -92,7 +110,7 @@ public class Player : MonoBehaviour
     }
 
     /// <summary>
-    /// Add a card to the players hand.
+    /// Add a card to the players hand and if it's a human player flip it over.
     /// </summary>
     /// <param name="cardToAdd"></param>
     public virtual void AddCard(Card cardToAdd)
@@ -102,23 +120,21 @@ public class Player : MonoBehaviour
     }
 
     /// <summary>
-    /// Adds the card to the players hand.
+    /// Adds the card to the players hand and triggers the <see cref="HandChangedEvent"/>
     /// </summary>
     /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
         this.Hand.Add(cardToAdd);
-        if (!canDrawAgain)
-        {
-            lastCardPulled = cardToAdd;
-        }
+        HandChangedEvent(this, cardToAdd);
     }
 
     /// <summary>
-    /// Take all of the cards that are in our hand and parent them to us. As well we should place them in a neat pattern
+    /// Take all of the cards that are in our hand and parent them to us. As well we should place them in a pattern
     /// </summary>
-    public void FixupCardPositions()
+    protected virtual void FixupCardPositions()
     {
+        // We should only fixup the positions when a card is added or 
         float cardsStartingPositionBase = (Hand.Count - 1) * horizontalSpacing;
         int itemNumber = 0;
         var v3 = this.transform.position;
@@ -128,27 +144,24 @@ public class Player : MonoBehaviour
             float cardsStartingPosition = ((cardsStartingPositionBase + cardToAdd.Width) * -0.5f) + (cardToAdd.Width * 0.5f);
             cardNumber -= zOrderSpacing;
             cardToAdd.transform.SetParent(this.transform);
-            cardToAdd.transform.SetPositionAndRotation(new Vector3(v3.x + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)), v3.y + 0, v3.z + cardNumber), Quaternion.identity);
+            cardToAdd.transform.SetPositionAndRotation(new Vector3(
+                v3.x + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
+                v3.y + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + 0,
+                v3.z + cardNumber), Quaternion.identity);
+            cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
         }
     }
 
-    private void AskAboutWild(Card cardToPlay)
+    /// <summary>
+    /// Initializes the default player state.
+    /// </summary>
+    /// <remarks>
+    /// By default this will initialize the random jitter and set the default <see cref="HandChangedEvent"/> to the protected <see cref="HandChanged(object, Card)"/> handler which updates the card poisitions
+    /// </remarks>
+    protected virtual void InitializePlayer()
     {
-        // In here we should bring up some UI component that displays the wild card colors
-        bool shouldStop = false;
-        while (!shouldStop)
-        {
-            shouldStop = true;
-            Console.WriteLine("You're playing a wild card. What color do you want the next to be?");
-            Console.WriteLine("1. Red");
-            Console.WriteLine("2. Yellow");
-            Console.WriteLine("3. Blue");
-            Console.WriteLine("4. Green");
-            if (int.TryParse(Console.ReadLine(), out int colorNumber))
-            {
-                shouldStop = ChooseWildColor(cardToPlay, colorNumber);
-            }
-        }
+        rand.InitState();
+        this.HandChangedEvent += HandChanged;
     }
 
     protected bool ChooseWildColor(Card cardToPlay, int colorNumber)
@@ -174,6 +187,24 @@ public class Player : MonoBehaviour
                 break;
         }
         return whatToReturn;
+    }
+    private void AskAboutWild(Card cardToPlay)
+    {
+        // In here we should bring up some UI component that displays the wild card colors
+        bool shouldStop = false;
+        while (!shouldStop)
+        {
+            shouldStop = true;
+            Console.WriteLine("You're playing a wild card. What color do you want the next to be?");
+            Console.WriteLine("1. Red");
+            Console.WriteLine("2. Yellow");
+            Console.WriteLine("3. Blue");
+            Console.WriteLine("4. Green");
+            if (int.TryParse(Console.ReadLine(), out int colorNumber))
+            {
+                shouldStop = ChooseWildColor(cardToPlay, colorNumber);
+            }
+        }
     }
 
 }

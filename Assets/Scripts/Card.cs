@@ -18,7 +18,7 @@ public class Card : MonoBehaviour
 
     private Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
 
-    public bool showCardFront;
+    private bool showCardFront;
 
     private float? _width = null;
     public float Width

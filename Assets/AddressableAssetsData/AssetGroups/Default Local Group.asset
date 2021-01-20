@@ -419,6 +419,18 @@ MonoBehaviour:
     m_SerializedLabels: []
     m_MainAsset: {fileID: 0}
     m_TargetAsset: {fileID: 0}
+  - m_GUID: 1a015a039e55dc542a1449c72d59be40
+    m_Address: Assets/Prefabs/DimmableCard.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 0}
+    m_TargetAsset: {fileID: 0}
+  - m_GUID: be9350e25d2f4dc42a5aee0b5f57e944
+    m_Address: Assets/Prefabs/WinBanner.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 0}
+    m_TargetAsset: {fileID: 0}
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: ab0f2e2408961824e914f4504ec0c942, type: 2}
   m_SchemaSet:

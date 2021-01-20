@@ -87,8 +87,6 @@ public class Clickable : MonoBehaviour
                                 }
                             }
                         }
-                        game.HumanPlayer.FixupCardPositions();
-
                     }
                     ResetClick();
                 }
