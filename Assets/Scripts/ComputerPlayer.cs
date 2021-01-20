@@ -17,6 +17,10 @@ public class ComputerPlayer : Player
 
     }
 
+    /// <summary>
+    /// Dims the cards that are dimmable to give visible feedback that the computer player is "thinking"
+    /// </summary>
+    /// <param name="dim">True to dim, Flase to highlight</param>
     public void DimCards(bool dim)
     {
         var allCards = transform.GetComponentsInChildren<SpriteRenderer>();
@@ -29,6 +33,8 @@ public class ComputerPlayer : Player
             }
         }
     }
+
+
     public override void AddCard(Card cardToAdd)
     {
         cardToAdd.Hide();
@@ -38,6 +44,8 @@ public class ComputerPlayer : Player
 
     public override Card PlayCard(Card cardToPlayAgainst, bool addToHand)
     {
+        // For this action we'll check to see if we have any cards to play
+        // If we don't we need to return an empty card so we have the correct game action
         var cardToRetun = Card.Empty;
 
         for (int i = 0; i < Hand.Count; i++)
@@ -47,20 +55,17 @@ public class ComputerPlayer : Player
                 if (Hand[i].Color == Card.CardColor.Wild)
                 {
                     ChooseWildColor(Hand[i], new System.Random().Next(1, 5));
-                    Hand[i].SetProps(Hand[i].Value, Hand[i].WildColor);
                 }
                 Console.WriteLine();
                 cardToRetun = Hand[i];
-                cardToRetun.FlipCardOver();
                 cardToRetun.Unhide();
-                cardToRetun.Dim(false);
+                cardToRetun.FlipCardOver();
                 Hand.Remove(cardToRetun);
                 playedCard = cardToRetun;
                 return cardToRetun;
             }
         }
 
-        RestHand();
         return cardToRetun;
     }
 }

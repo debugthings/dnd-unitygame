@@ -23,9 +23,15 @@ public class Clickable : MonoBehaviour
             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Vector2 mousePos2D = new Vector2(mousePos.x, mousePos.y);
 
+            // We will raycast the board and look for either the player's cards
+            // or we'll find the "deal pile".
+            // All cards have a collider which enables this behavior
             RaycastHit2D hit = Physics2D.Raycast(mousePos2D, Vector2.zero);
             if (hit.collider != null)
             {
+                // Simple doubleclick behavior.
+                // Check to see if we've clicked the last thing again
+                // if not we reset.
                 if (lastClicked != null && lastClicked != hit.collider.gameObject)
                 {
                     ResetClick();
@@ -51,6 +57,7 @@ public class Clickable : MonoBehaviour
                             if (cardToCheck.name.Equals("DealDeck", StringComparison.InvariantCultureIgnoreCase))
                             {
                                 // If we're in play and the player decides to draw, either the card will be played or added to the hand.
+                                
                                 // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
                                 // the click originated from the player.
                                 var cardToPlay = game.TakeFromDealPile();
@@ -62,6 +69,7 @@ public class Clickable : MonoBehaviour
                                 else
                                 {
                                     game.HumanPlayer.AddCard(cardToPlay);
+                                    game.GameLoop(Card.Empty, game.HumanPlayer);
                                 }
                             }
                             else if (cardToCheck.gameObject.name.Equals("DiscardDeck", StringComparison.InvariantCultureIgnoreCase))
@@ -70,9 +78,13 @@ public class Clickable : MonoBehaviour
                             }
                             else
                             {
+                                // If we're here we've likely tried to play a card. We need to check to see the card is okay to play.
                                 var player = cardObjectHitTest.GetComponentInParent<Player>();
-                                player.PlayCard(cardObjectHitTest, false);
-                                game.GameLoop(cardObjectHitTest, player);
+                                var cardToPlay = player.PlayCard(cardObjectHitTest, false);
+                                if (cardToPlay != Card.Empty)
+                                {
+                                    game.GameLoop(cardObjectHitTest, player);
+                                }
                             }
                         }
                         game.HumanPlayer.FixupCardPositions();

@@ -86,6 +86,8 @@ public class Game : MonoBehaviour
     }
 
     private const float cardStackZOrderOffset = 0.01f;
+    private const float maxTranslation = 0.06f;
+    private const float maxRotation = 2.0f;
     private SortedDictionary<Guid, Card> deck = new SortedDictionary<Guid, Card>();
     private CircularList<Player> players = new CircularList<Player>();
 
@@ -145,6 +147,7 @@ public class Game : MonoBehaviour
         // We should always have 1 deck but a max of max decks (5)
         numberOfDecks = MathExtension.Clamp(baseNumber, this.gameOptions.BaseNumberOfDecks, this.gameOptions.MaxDecks);
 
+        // Remove cards so we can just use the loops below
         FixupCardsPerColor();
 
         // Build the deck and create a random placement
@@ -154,7 +157,8 @@ public class Game : MonoBehaviour
         {
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
-                for (int cardValueIndex = 0; cardValueIndex < cardValuesArray.Count; cardValueIndex++)
+                //for (int cardValueIndex = 0; cardValueIndex < cardValuesArray.Count; cardValueIndex++)
+                for (int cardValueIndex = 0; cardValueIndex < 3; cardValueIndex++)
                 {
                     AsyncOperationHandle<GameObject> cardPrefabLoad = Addressables.InstantiateAsync("Assets/Prefabs/Card.prefab", dealDeck.transform);
                     yield return cardPrefabLoad;
@@ -202,6 +206,7 @@ public class Game : MonoBehaviour
             deck.Add(Guid.NewGuid(), instantiatedDrawFourCard);
         }
 
+        // Use this to generate a proper zorder of the deck
         maxStackDepth = deck.Count() * cardStackZOrderOffset;
 
         // Push the cards in the random order to a Stack...
@@ -225,6 +230,7 @@ public class Game : MonoBehaviour
             }
         }
 
+        // Correctly display and jitter the cards
         foreach (var player in players)
         {
             if (player is ComputerPlayer)
@@ -237,7 +243,33 @@ public class Game : MonoBehaviour
                 player.FixupCardPositions();
             }
         }
-        PutCardOnDiscardPile(DealPile.Pop(), true, true);
+        PutCardOnDiscardPile(TakeFromDealPile(), true, true);
+        // There are a couple of rules on the first play
+        // If it's a wild the first player chooses the color.
+        // If it's a wild draw four the card goes back into the pile.
+        FirstPlay(CurrentPlayer);
+    }
+
+    private void FirstPlay(Player player)
+    {
+        var firstCard = DiscardPile.Peek();
+        switch (firstCard.Value)
+        {
+            case Card.CardValue.DrawTwo:
+            case Card.CardValue.Skip:
+            case Card.CardValue.Reverse:
+            case Card.CardValue.Wild:
+                // These are all valid cards that will be played on the first player.
+                PerformGameAction(firstCard, true);
+                break;
+            case Card.CardValue.DrawFour:
+                // When we have a draw four we need to put it back into the deck.
+                Console.WriteLine($"Draw Four on first card. Dealing a new card.");
+                PutCardBackInDeckInRandomPoisiton();
+                break;
+            default:
+                break;
+        }
     }
 
     private int BuildComputerPlayers(int totalPlayer)
@@ -298,10 +330,10 @@ public class Game : MonoBehaviour
     {
         float angle = itemNumber * Mathf.PI * 2 / totalObjects;
         T player = default(T);
+        // TODO Properly place the players at the correct locations.
         if (itemNumber == 0)
         {
             player = Instantiate(prefab, new Vector3(0, -5), Quaternion.identity, centerOfScreen);
-
         }
         else if (itemNumber == 1)
         {
@@ -319,13 +351,26 @@ public class Game : MonoBehaviour
 
         return player;
     }
+
+    /// <summary>
+    /// The pile where the cards are dealt from
+    /// </summary>
     public Stack<Card> DealPile { get; set; } = new Stack<Card>();
+
+    /// <summary>
+    /// THe pile where the cards are discarded to
+    /// </summary>
     public Stack<Card> DiscardPile { get; set; } = new Stack<Card>();
-    internal Card TakeFromDealPile()
+
+    /// <summary>
+    /// Pulls a card from the deal pile and will automatically swap the discard pile if needed
+    /// </summary>
+    /// <returns></returns>
+    public Card TakeFromDealPile()
     {
         if (this.DealPile.Count == 0)
         {
-            // Since we've flipped the items over we would visuall expect the deck to be flipped each time.
+            // Since we've flipped the items over we would visually expect the deck to be flipped each time.
             while (DiscardPile.Count > 0)
             {
                 var item = DiscardPile.Pop();
@@ -339,7 +384,14 @@ public class Game : MonoBehaviour
         return this.DealPile.Pop();
     }
 
-    internal GameAction PutCardOnDiscardPile(Card card, bool dontCheckEquals, bool flipCard)
+    /// <summary>
+    /// Puts the card on the discard pile and handles the flupping and translation of the card
+    /// </summary>
+    /// <param name="card"></param>
+    /// <param name="dontCheckEquals"></param>
+    /// <param name="flipCard"></param>
+    /// <returns></returns>
+    public GameAction PutCardOnDiscardPile(Card card, bool dontCheckEquals, bool flipCard)
     {
         // Some special cases where we don't push the card to the pile since it's a 
         if (card.Action == GameAction.DrawAndPlayOnce || card.Action == GameAction.DrawAndSkip)
@@ -365,54 +417,55 @@ public class Game : MonoBehaviour
         return GameAction.NextPlayer;
     }
 
+    /// <summary>
+    /// Applies a random XY translation and a random rotation
+    /// </summary>
+    /// <param name="card"></param>
+    /// <param name="count"></param>
     private void CardPositionJitter(Card card, float count)
     {
         var v3 = card.transform.position;
-        rand.NextFloat(-0.06f, 0.06f);
-        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, 0.06f), v3.y + rand.NextFloat(0.02f, 0.06f), (v3.z + maxStackDepth) - (count + 1) * cardStackZOrderOffset), Quaternion.identity);
-        card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-2.0f, 2.0f);
+        rand.NextFloat(-maxTranslation, maxTranslation);
+        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, maxTranslation), v3.y + rand.NextFloat(0.02f, maxTranslation), (v3.z + maxStackDepth) - (count + 1) * cardStackZOrderOffset), Quaternion.identity);
+        card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxRotation, maxRotation);
     }
 
+    /// <summary>
+    /// Performs the primary game mechanic of checking the cards and the player that is performing the action.
+    /// </summary>
+    /// <param name="c"></param>
+    /// <param name="player"></param>
     public void GameLoop(Card c, Player player)
     {
-        var nextPlayer = players.PeekNext();
-
-        //bool firstPlay = true;
-        //Console.WriteLine();
-        //// There are a couple of rules on the first play
-        //// If it's a wild the first player chooses the color.
-        //// If it's a wild draw four the card goes back into the pile.
-        //if (firstPlay)
-        //{
-        //    FirstPlay(player);
-        //    player = players.Current();
-        //    nextPlayer = players.PeekNext();
-        //}
-        //Console.WriteLine($"It is {player.Name}'s turn!");
-        //WhatsOnTheDiscard(firstPlay);
-
 
         if (c != Card.Empty && player == players.Current())
         {
             PerformGameAction(c, false);
         }
 
+        // Update my hand to show the cards I got...
+        HumanPlayer.FixupCardPositions();
+
         if (player.CheckWin())
         {
             Console.WriteLine($"{player.Name} wins!");
             return;
         }
-        // Update my hand to show the cards I got...
-        HumanPlayer.FixupCardPositions();
+
+        // Un dim the computer player so it gives us an indication that they are playing
         var compPlayer = players.Next();
         if (compPlayer is ComputerPlayer)
         {
             var playerRef = compPlayer as ComputerPlayer;
             playerRef.DimCards(false);
         }
+        // Add a bogus delay so the game seems like somoene is playing with us.
         Invoke("CheckAndExecuteComputerPlayerAction", 3.0f);
     }
 
+    /// <summary>
+    /// Drives the loop forward
+    /// </summary>
     private void CheckAndExecuteComputerPlayerAction()
     {
         if (CurrentPlayer is ComputerPlayer)
@@ -429,26 +482,20 @@ public class Game : MonoBehaviour
                 else
                 {
                     GameLoop(card, playerRef);
+                    card.SetProps(card.Value, card.WildColor);
+
                 }
+                playerRef.DimCards(true);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                string s = "s";
+                // Means the stack is empty
+                TakeFromDealPile();
             }
-            finally
-            {
-            }
-            playerRef.DimCards(true);
+            
 
         }
     }
-
-    private void DimPlayer()
-    {
-        var playerRef = CurrentPlayer as ComputerPlayer;
-        playerRef.DimCards(false);
-    }
-
 
     /// <summary>
     /// Puts the card back in a pseudo random spot that is at least 2n numbers of players into the middle up to n number of players from the bottom. 
@@ -474,6 +521,11 @@ public class Game : MonoBehaviour
         DiscardPile.Push(TakeFromDealPile());
     }
 
+    /// <summary>
+    /// The business end of the game mechanics. Will apply the actions to the correct players
+    /// </summary>
+    /// <param name="c"></param>
+    /// <param name="firstPlay"></param>
     public void PerformGameAction(Card c, bool firstPlay = false)
     {
         var player = players.Current();

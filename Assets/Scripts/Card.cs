@@ -61,6 +61,11 @@ public class Card : MonoBehaviour
     {
         gameObject.SetActive(true);
     }
+
+    /// <summary>
+    /// Generate the remainder of the file name to generate the sprites
+    /// </summary>
+    /// <returns></returns>
     private string GenerateFileName()
     {
         string value = string.Empty;
@@ -115,6 +120,8 @@ public class Card : MonoBehaviour
                 value = "DrawFour";
                 break;
             case CardValue.Wild:
+                value = "Wild";
+                break;
             case CardValue.Empty:
             case CardValue.DrawAndGoAgainOnce:
             case CardValue.DrawAndSkipTurn:
@@ -131,6 +138,9 @@ public class Card : MonoBehaviour
         ShowCard();
     }
 
+    /// <summary>
+    /// Shows the front or back of the card depending on the flip state
+    /// </summary>
     private void ShowCard()
     {
         if (sprites.ContainsKey(CardFront) && sprites.ContainsKey(CardBack))
@@ -152,6 +162,10 @@ public class Card : MonoBehaviour
 
     private bool customAction = false;
     private GameAction _Action = GameAction.NextPlayer;
+
+    /// <summary>
+    /// The color of the card to show
+    /// </summary>
     public enum CardColor
     {
         Red,
@@ -162,6 +176,9 @@ public class Card : MonoBehaviour
         Special,
     }
 
+    /// <summary>
+    /// The value of the card to show
+    /// </summary>
     public enum CardValue
     {
         Zero,
@@ -184,14 +201,36 @@ public class Card : MonoBehaviour
         DrawAndSkipTurn
     }
 
+    /// <summary>
+    /// Flips the card
+    /// </summary>
     public void FlipCardOver()
     {
         showCardFront = !showCardFront;
     }
+    /// <summary>
+    /// Gets the value of the custom draw card amount
+    /// </summary>
     public int CustomDrawAmount { get; private set; }
+
+    /// <summary>
+    /// Gets the card's value
+    /// </summary>
     public CardValue Value { get; private set; }
+
+    /// <summary>
+    /// Gets the card's color
+    /// </summary>
     public CardColor Color { get; private set; }
+
+    /// <summary>
+    /// Gets the color to be played for the wild card
+    /// </summary>
     public CardColor WildColor { get; private set; }
+   
+    /// <summary>
+    /// Gets the game action this card will perform
+    /// </summary>
     public GameAction Action
     {
         get
@@ -226,7 +265,17 @@ public class Card : MonoBehaviour
             _Action = value;
         }
     }
+
+    /// <summary>
+    /// Gets the message for the cusotom card
+    /// </summary>
     public string CardMessage { get; private set; }
+
+    /// <summary>
+    /// Sets the card's value and color as well as sets the sprites
+    /// </summary>
+    /// <param name="value">The value this card should be</param>
+    /// <param name="color">The color this card should be</param>
     public void SetProps(CardValue value, CardColor color)
     {
         this.Color = color;
@@ -260,37 +309,10 @@ public class Card : MonoBehaviour
         customAction = true;
     }
 
-    public void WriteCard(bool useWildColor)
-    {
-        var fg = Console.ForegroundColor;
-        if (useWildColor && Color == CardColor.Wild)
-        {
-            Color = WildColor;
-        }
-        switch (Color)
-        {
-            case Card.CardColor.Red:
-                Console.ForegroundColor = ConsoleColor.Red;
-                break;
-            case Card.CardColor.Green:
-                Console.ForegroundColor = ConsoleColor.Green;
-                break;
-            case Card.CardColor.Blue:
-                Console.ForegroundColor = ConsoleColor.Blue;
-                break;
-            case Card.CardColor.Yellow:
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                break;
-            case Card.CardColor.Wild:
-                Console.ForegroundColor = ConsoleColor.Magenta;
-                break;
-            default:
-                break;
-        }
-        Console.Write($"{this}");
-        Console.ForegroundColor = fg;
-    }
-
+    /// <summary>
+    /// Set the wild color of the card.
+    /// </summary>
+    /// <param name="color">The color the wild card should be on the next turn</param>
     public void SetWildColor(CardColor color)
     {
         if (Color == CardColor.Wild)
@@ -298,11 +320,19 @@ public class Card : MonoBehaviour
             WildColor = color;
         }
     }
-
     public override string ToString()
     {
         return $"{this.Color} {this.Value}";
     }
+
+    /// <summary>
+    /// Checks to see if the card can be played against another card.  
+    /// </summary>
+    /// <remarks>
+    /// Smple rules are in effect here. We check to see if the number value is the same or if the color value is the same. We also check to see if the card we're playing is wild or the card we're playing aginst is wild.
+    /// </remarks>
+    /// <param name="other">The other card to check against.</param>
+    /// <returns></returns>
     public bool CanPlay(Card other)
     {
         return this.Color.Equals(other.Color) | this.Value.Equals(other.Value) | other.Color.Equals(CardColor.Wild) | this.Color.Equals(CardColor.Wild);

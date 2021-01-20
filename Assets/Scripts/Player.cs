@@ -63,10 +63,10 @@ public class Player : MonoBehaviour
         {
             if (myCard.Color == Card.CardColor.Wild)
             {
+                // TODO add a prompt that will allow the player to select the correct color.
                 AskAboutWild(myCard);
             }
             Hand.Remove(myCard);
-            RestHand();
             return myCard;
         }
         // Only add it if it can't be played...
@@ -101,6 +101,10 @@ public class Player : MonoBehaviour
         AddCardToHand(cardToAdd);
     }
 
+    /// <summary>
+    /// Adds the card to the players hand.
+    /// </summary>
+    /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
         this.Hand.Add(cardToAdd);
@@ -110,6 +114,9 @@ public class Player : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Take all of the cards that are in our hand and parent them to us. As well we should place them in a neat pattern
+    /// </summary>
     public void FixupCardPositions()
     {
         float cardsStartingPositionBase = (Hand.Count - 1) * horizontalSpacing;
@@ -125,18 +132,8 @@ public class Player : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Returns the player to a starting state.
-    /// </summary>
-    public void RestHand()
-    {
-        lastCardPulled = Card.Empty;
-        canDrawAgain = true;
-    }
-
     private void AskAboutWild(Card cardToPlay)
     {
-
         // In here we should bring up some UI component that displays the wild card colors
         bool shouldStop = false;
         while (!shouldStop)

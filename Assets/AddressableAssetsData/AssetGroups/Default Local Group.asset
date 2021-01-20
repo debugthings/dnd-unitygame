@@ -300,7 +300,7 @@ MonoBehaviour:
     m_MainAsset: {fileID: 0}
     m_TargetAsset: {fileID: 0}
   - m_GUID: 77742c242187efd4aa0744cfe0875101
-    m_Address: Assets/Card Sprites/Uno_Wild.png
+    m_Address: Assets/Card Sprites/Uno_Wild_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
     m_MainAsset: {fileID: 0}
