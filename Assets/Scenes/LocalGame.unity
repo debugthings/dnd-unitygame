@@ -160,6 +160,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: DiscardDeck
       objectReference: {fileID: 0}
+    - target: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 4294967295
+      objectReference: {fileID: 0}
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
       propertyPath: m_RootOrder
@@ -193,7 +198,7 @@ PrefabInstance:
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
@@ -270,6 +275,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: DealDeck
       objectReference: {fileID: 0}
+    - target: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
+        type: 3}
+      propertyPath: m_StaticEditorFlags
+      value: 4294967295
+      objectReference: {fileID: 0}
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
       propertyPath: m_RootOrder
@@ -303,7 +313,7 @@ PrefabInstance:
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2344751958255755274, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
         type: 3}
@@ -385,7 +395,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 4294967295
   m_IsActive: 1
 --- !u!4 &1466642168
 Transform:

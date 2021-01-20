@@ -8,17 +8,109 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Game : MonoBehaviour
 {
+    public class GameOptions
+    {
+        /// <summary>
+        /// The number of human players for this game.
+        /// </summary>
+        /// <value>Default is 1</value>
+        public int HumanPlayers { get; set; } = 1;
+
+        /// <summary>
+        /// The number of computer players for this game. 
+        /// </summary>
+        /// <value>Default is 3</value>
+        public int ComputerPlayers { get; set; } = 3;
+
+        /// <summary>
+        /// The maximum number of decks for this game.
+        /// </summary>
+        /// <value>Default is 5</value>
+        public int MaxDecks { get; set; } = 5;
+
+        /// <summary>
+        /// The minimum number of decks for this game.
+        /// </summary>
+        /// <value>Default is 1</value>
+        public int BaseNumberOfDecks { get; set; } = 1;
+
+        /// <summary>
+        /// How many cards to deal for the initial hand.
+        /// </summary>
+        /// <value>Default is 5</value>
+        public int NumberOfCardsToDeal { get; set; } = 5;
+
+        /// <summary>
+        /// How many players per deck.
+        /// </summary>
+        /// <remarks>
+        /// What we want to do here is have a game where the number of decks is in some multiple of the number of players
+        /// However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
+        /// For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
+        /// </remarks>
+        /// <value>Default is 4</value>
+        public int PlayersPerDeck { get; set; } = 4;
+
+        /// <summary>
+        /// The maximum number of cards allowed when <see cref="AllowStacking"/> is enabled.
+        /// </summary>
+        public int MaxStackCards { get; set; } = 3;
+
+        /// <summary>
+        /// Allow a player to "stack" cards for play.
+        /// </summary>
+        /// <remarks>
+        /// <para>This is a sure fire way to make everyone hate you. What this value does is allows a player to stack or chain cards.</para>
+        /// <para>For example:</para><para>A player has in their hand: Red Three, Green Three, Wild, Yellow Five, Blue Five. A player is presented with a Red Zero; in normal play they can only play any Red card, any color Zero, or a wild.</para><para>In a stacked game, however, you could chain the cards to play up to the <see cref="MaxStackCards"/> or unitl you'd reach "Uno". Use this at your own risk.</para> 
+        /// </remarks>
+        /// <value>Default is false.</value>
+        public bool AllowStacking { get; set; }
+
+        /// <summary>
+        /// Sets if the player has to call "Uno" when they reach their last card. Will use the <see cref="UnoTimeoutForgiveness"/>
+        /// </summary>
+        /// <value>Defualt is true</value>
+        public bool PlayerHasToCallUno { get; set; } = true;
+
+        /// <summary>
+        /// The amount of time to let the "Uno" player have before they are forced to draw two.
+        /// </summary>
+        /// <remarks>In normal play the person with one card left MUST call "Uno" before the next play so they do not incur a two card penalty. In online play we will have a button to click. If the next player goes before the button is clicked the current "Uno" player will be afforded a time window to click the button.</remarks>
+        /// <value>Default is 5 seconds.</value>
+        public TimeSpan UnoTimeoutForgiveness { get; set; } = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Most actions are simple, draw 2, draw 4, reverse, etc.
+        /// </summary>
+        public bool AllowCustomActionCards { get; set; }
+    }
+
+    private const float cardStackZOrderOffset = 0.01f;
+    private SortedDictionary<Guid, Card> deck = new SortedDictionary<Guid, Card>();
+    private CircularList<Player> players = new CircularList<Player>();
+
+    private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
+    private Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
+    private Card.CardValue[] specials = new Card.CardValue[] { Card.CardValue.DrawFour };
+
+    private GameOptions gameOptions;
+
+    private int numOfPlayers = 4;
+    private int numberOfDecks = 1;
+    private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
+
+    private float maxStackDepth = 0.0f;
+
     public Card dealDeck;
     public Card discardDeck;
     public Card card;
     public Player player;
     public ComputerPlayer computerPlayer;
 
-    private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
+
 
     public Card TopCardOnDiscard => this.DiscardPile.Peek();
     public Card TopCardOnDeal => this.DealPile.Peek();
-
     public Player CurrentPlayer => this.players.Current();
 
     public Player HumanPlayer = null;
@@ -29,8 +121,6 @@ public class Game : MonoBehaviour
     {
         this.gameOptions = gameOptions ?? new GameOptions();
         rand.InitState();
-
-
 
 
         if (this.gameOptions.HumanPlayers < 1)
@@ -54,6 +144,7 @@ public class Game : MonoBehaviour
 
         // We should always have 1 deck but a max of max decks (5)
         numberOfDecks = MathExtension.Clamp(baseNumber, this.gameOptions.BaseNumberOfDecks, this.gameOptions.MaxDecks);
+
         FixupCardsPerColor();
 
         // Build the deck and create a random placement
@@ -65,13 +156,8 @@ public class Game : MonoBehaviour
             {
                 for (int cardValueIndex = 0; cardValueIndex < cardValuesArray.Count; cardValueIndex++)
                 {
-                    //(cardsPerColor[j], colors[i]);
                     AsyncOperationHandle<GameObject> cardPrefabLoad = Addressables.InstantiateAsync("Assets/Prefabs/Card.prefab", dealDeck.transform);
                     yield return cardPrefabLoad;
-                    if (cardPrefabLoad.Status == AsyncOperationStatus.Succeeded)
-                    {
-                        Debug.DebugBreak();
-                    }
                     Card instantiatedCard = cardPrefabLoad.Result.GetComponent<Card>();
                     instantiatedCard.SetProps(cardValuesArray[cardValueIndex], cardColorArray[colorIndex]);
                     instantiatedCard.name = instantiatedCard.ToString();
@@ -87,10 +173,6 @@ public class Game : MonoBehaviour
             {
                 AsyncOperationHandle<GameObject> cardPrefabLoad = Addressables.InstantiateAsync("Assets/Prefabs/Card.prefab", dealDeck.transform);
                 yield return cardPrefabLoad;
-                if (cardPrefabLoad.Status == AsyncOperationStatus.Succeeded)
-                {
-                    Debug.DebugBreak();
-                }
                 Card instantiatedCard = cardPrefabLoad.Result.GetComponent<Card>();
                 instantiatedCard.SetProps(Card.CardValue.Zero, cardColorArray[colorIndex]);
                 instantiatedCard.name = instantiatedCard.ToString();
@@ -104,10 +186,6 @@ public class Game : MonoBehaviour
             //deck.Add(Guid.NewGuid(), new Card(Card.CardValue.Wild, Card.CardColor.Wild));
             AsyncOperationHandle<GameObject> cardPrefabLoadForWild = Addressables.InstantiateAsync("Assets/Prefabs/Card.prefab", dealDeck.transform);
             yield return cardPrefabLoadForWild;
-            if (cardPrefabLoadForWild.Status == AsyncOperationStatus.Succeeded)
-            {
-                Debug.DebugBreak();
-            }
             Card instantiatedWildCard = cardPrefabLoadForWild.Result.GetComponent<Card>();
             instantiatedWildCard.SetProps(Card.CardValue.Wild, Card.CardColor.Wild);
             instantiatedWildCard.name = instantiatedWildCard.ToString();
@@ -115,10 +193,6 @@ public class Game : MonoBehaviour
 
             AsyncOperationHandle<GameObject> cardPrefabLoadForDrawFour = Addressables.InstantiateAsync("Assets/Prefabs/Card.prefab", dealDeck.transform);
             yield return cardPrefabLoadForDrawFour;
-            if (cardPrefabLoadForDrawFour.Status == AsyncOperationStatus.Succeeded)
-            {
-                Debug.DebugBreak();
-            }
             Card instantiatedDrawFourCard = cardPrefabLoadForDrawFour.Result.GetComponent<Card>();
             instantiatedDrawFourCard.SetProps(Card.CardValue.DrawFour, Card.CardColor.Wild);
             instantiatedDrawFourCard.name = instantiatedDrawFourCard.ToString();
@@ -127,6 +201,8 @@ public class Game : MonoBehaviour
             deck.Add(Guid.NewGuid(), instantiatedWildCard);
             deck.Add(Guid.NewGuid(), instantiatedDrawFourCard);
         }
+
+        maxStackDepth = deck.Count() * cardStackZOrderOffset;
 
         // Push the cards in the random order to a Stack...
         foreach (var card in deck)
@@ -213,97 +289,10 @@ public class Game : MonoBehaviour
     {
 
     }
+
     /// <summary>
     /// The game options that control how the game behaves
     /// </summary>
-    public class GameOptions
-    {
-        /// <summary>
-        /// The number of human players for this game.
-        /// </summary>
-        /// <value>Default is 1</value>
-        public int HumanPlayers { get; set; } = 1;
-
-        /// <summary>
-        /// The number of computer players for this game. 
-        /// </summary>
-        /// <value>Default is 3</value>
-        public int ComputerPlayers { get; set; } = 3;
-
-        /// <summary>
-        /// The maximum number of decks for this game.
-        /// </summary>
-        /// <value>Default is 5</value>
-        public int MaxDecks { get; set; } = 5;
-
-        /// <summary>
-        /// The minimum number of decks for this game.
-        /// </summary>
-        /// <value>Default is 1</value>
-        public int BaseNumberOfDecks { get; set; } = 1;
-
-        /// <summary>
-        /// How many cards to deal for the initial hand.
-        /// </summary>
-        /// <value>Default is 5</value>
-        public int NumberOfCardsToDeal { get; set; } = 5;
-
-        /// <summary>
-        /// How many players per deck.
-        /// </summary>
-        /// <remarks>
-        /// What we want to do here is have a game where the number of decks is in some multiple of the number of players
-        /// However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
-        /// For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
-        /// </remarks>
-        /// <value>Default is 4</value>
-        public int PlayersPerDeck { get; set; } = 4;
-
-        /// <summary>
-        /// The maximum number of cards allowed when <see cref="AllowStacking"/> is enabled.
-        /// </summary>
-        public int MaxStackCards { get; set; } = 3;
-
-        /// <summary>
-        /// Allow a player to "stack" cards for play.
-        /// </summary>
-        /// <remarks>
-        /// <para>This is a sure fire way to make everyone hate you. What this value does is allows a player to stack or chain cards.</para>
-        /// <para>For example:</para><para>A player has in their hand: Red Three, Green Three, Wild, Yellow Five, Blue Five. A player is presented with a Red Zero; in normal play they can only play any Red card, any color Zero, or a wild.</para><para>In a stacked game, however, you could chain the cards to play up to the <see cref="MaxStackCards"/> or unitl you'd reach "Uno". Use this at your own risk.</para> 
-        /// </remarks>
-        /// <value>Default is false.</value>
-        public bool AllowStacking { get; set; }
-
-        /// <summary>
-        /// Sets if the player has to call "Uno" when they reach their last card. Will use the <see cref="UnoTimeoutForgiveness"/>
-        /// </summary>
-        /// <value>Defualt is true</value>
-        public bool PlayerHasToCallUno { get; set; } = true;
-
-        /// <summary>
-        /// The amount of time to let the "Uno" player have before they are forced to draw two.
-        /// </summary>
-        /// <remarks>In normal play the person with one card left MUST call "Uno" before the next play so they do not incur a two card penalty. In online play we will have a button to click. If the next player goes before the button is clicked the current "Uno" player will be afforded a time window to click the button.</remarks>
-        /// <value>Default is 5 seconds.</value>
-        public TimeSpan UnoTimeoutForgiveness { get; set; } = TimeSpan.FromSeconds(5);
-
-        /// <summary>
-        /// Most actions are simple, draw 2, draw 4, reverse, etc.
-        /// </summary>
-        public bool AllowCustomActionCards { get; set; }
-    }
-    private SortedDictionary<Guid, Card> deck = new SortedDictionary<Guid, Card>();
-    private CircularList<Player> players = new CircularList<Player>();
-
-    private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
-    private Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
-    private Card.CardValue[] specials = new Card.CardValue[] { Card.CardValue.DrawFour };
-
-    private GameOptions gameOptions;
-
-    private int numOfPlayers = 4;
-    private int numberOfDecks = 1;
-
     private static T PlaceInCircle<T>(Transform centerOfScreen, T prefab, int itemNumber, int totalObjects, float radius) where T : MonoBehaviour
     {
         float angle = itemNumber * Mathf.PI * 2 / totalObjects;
@@ -331,7 +320,6 @@ public class Game : MonoBehaviour
     }
     public Stack<Card> DealPile { get; set; } = new Stack<Card>();
     public Stack<Card> DiscardPile { get; set; } = new Stack<Card>();
-
     internal Card TakeFromDealPile()
     {
         if (this.DealPile.Count == 0)
@@ -348,15 +336,6 @@ public class Game : MonoBehaviour
             }
         }
         return this.DealPile.Pop();
-    }
-
-    private void WhatsOnTheDiscard(bool firstPlay)
-    {
-        Console.Write("Card ");
-
-        var c = DiscardPile.Peek();
-        c.WriteCard(!firstPlay);
-        Console.WriteLine(" is on the discard pile.");
     }
 
     internal GameAction PutCardOnDiscardPile(Card card, bool dontCheckEquals, bool flipCard)
@@ -388,8 +367,8 @@ public class Game : MonoBehaviour
     private void CardPositionJitter(Card card, float count)
     {
         var v3 = card.transform.position;
-        rand.NextFloat(0.02f, 0.06f);
-        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, 0.06f), v3.y + rand.NextFloat(0.02f, 0.06f), v3.z + count * 0.01f), Quaternion.identity);
+        rand.NextFloat(-0.06f, 0.06f);
+        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, 0.06f), v3.y + rand.NextFloat(0.02f, 0.06f), (v3.z + maxStackDepth) - (count+1) * cardStackZOrderOffset), Quaternion.identity);
         card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-2.0f, 2.0f);
     }
 
@@ -428,28 +407,6 @@ public class Game : MonoBehaviour
 
     }
 
-    private void FirstPlay(Player player)
-    {
-        var firstCard = DiscardPile.Peek();
-        switch (firstCard.Value)
-        {
-            case Card.CardValue.DrawTwo:
-            case Card.CardValue.Skip:
-            case Card.CardValue.Reverse:
-            case Card.CardValue.Wild:
-                // These are all valid cards that will be played on the first player.
-                PerformGameAction(firstCard, true);
-                break;
-            case Card.CardValue.DrawFour:
-                // When we have a draw four we need to put it back into the deck.
-                Console.WriteLine($"Draw Four on first card. Dealing a new card.");
-                PutCardBackInDeckInRandomPoisiton();
-                break;
-            default:
-                break;
-        }
-    }
-
     /// <summary>
     /// Puts the card back in a pseudo random spot that is at least 2n numbers of players into the middle up to n number of players from the bottom. 
     /// </summary>
@@ -476,7 +433,6 @@ public class Game : MonoBehaviour
 
     public void PerformGameAction(Card c, bool firstPlay = false)
     {
-
         var player = players.Current();
         var nextPlayer = firstPlay ? players.Current() : players.PeekNext();
         // If it is not a player's turn we should just skip

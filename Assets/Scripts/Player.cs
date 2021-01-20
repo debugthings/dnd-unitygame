@@ -5,10 +5,9 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    private const float zOrderSpacing = 0.2f;
+    private const float zOrderSpacing = 0.01f;
     private const float horizontalSpacing = 0.5f;
     public Card cardPrefab;
-    private float cardNumber = 0;
     private int turnCounter = 0;
     public Game CurrentGame { get; set; }
     // Start is called before the first frame update
@@ -112,12 +111,13 @@ public class Player : MonoBehaviour
 
     public void FixupCardPositions()
     {
-        float cardsStartingPositionBase = (Hand.Count  * horizontalSpacing);
+        float cardsStartingPositionBase = (Hand.Count - 1) * horizontalSpacing;
         int itemNumber = 0;
         var v3 = this.transform.position;
+        float cardNumber = 0.0f;
         foreach (var cardToAdd in Hand)
         {
-            float cardsStartingPosition = (cardsStartingPositionBase - ((cardToAdd.Width - horizontalSpacing))) * -0.25f;
+            float cardsStartingPosition = ((cardsStartingPositionBase + cardToAdd.Width) * -0.5f) + (cardToAdd.Width * 0.5f);
             cardNumber -= zOrderSpacing;
             cardToAdd.transform.SetParent(this.transform);
             cardToAdd.transform.SetPositionAndRotation(new Vector3(v3.x + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)), v3.y + 0, v3.z + cardNumber), Quaternion.identity);
