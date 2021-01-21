@@ -484,8 +484,12 @@ MonoBehaviour:
   player: {fileID: 181634149931105149, guid: 3e884209bccab0e4db14d71c5e463eb3, type: 3}
   computerPlayer: {fileID: 8240977832005720464, guid: 4842de842a194d546ae88b66fecf0d1e,
     type: 3}
-  cardAr:
+  cardReference:
     m_AssetGUID: 6dd2eb9779615284c9d49e1ec0e239f1
+    m_SubObjectName: 
+    m_SubObjectType: 
+  dimmableCardReference:
+    m_AssetGUID: 1a015a039e55dc542a1449c72d59be40
     m_SubObjectName: 
     m_SubObjectType: 
   HumanPlayer: {fileID: 181634149931105149, guid: 3e884209bccab0e4db14d71c5e463eb3,
