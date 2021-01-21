@@ -1,0 +1,27 @@
+
+```mermaid
+classDiagram
+    MonoBehavior <|-- Player
+    Player <|-- NetworkPlayer
+    Player <|-- LocalPlayer
+    Player <|-- ComputerPlayer
+
+    Player : +Guid ID
+    Player : +Card cardPrefab
+    Player : +String Name
+    Player : +EventHandler<Card> HandChangedEvent
+    Player : +List<Card> Hand
+    Player: +Start() void
+    Player: +Update() void
+    Player: +PlayCard() Card
+    Player: +CanPlay(Card) bool
+
+
+    class NetworkPlayer{
+    }
+    class LocalPlayer{
+    }
+    class ComputerPlayer{
+      +DimCards(bool) void
+    }
+  ```        
