@@ -16,9 +16,13 @@ public class Card : MonoBehaviour
     private const string CardBack = "back";
     private const string CardFront = "front";
 
+    private static object lockObject = new object();
+    private static GameObject drawCardGameObject;
+    private static GameObject emptyCardGameObject;
+
     private Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
 
-    private bool showCardFront;
+    private bool showCarFace;
 
     private float? _width = null;
     public float Width
@@ -49,7 +53,31 @@ public class Card : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (drawCardGameObject == null)
+        {
+            lock (lockObject)
+            {
+                if (drawCardGameObject == null)
+                {
+                    drawCardGameObject = new GameObject("DrawAndSkip", typeof(Card));
+                    DrawAndSkip = drawCardGameObject.GetComponent<Card>();
+                    DrawAndSkip.SetProps(CardValue.DrawAndSkipTurn, CardColor.Special);
+                }
+            }
+        }
 
+        if (emptyCardGameObject == null)
+        {
+            lock (lockObject)
+            {
+                if (emptyCardGameObject == null)
+                {
+                    emptyCardGameObject = new GameObject("Empty", typeof(Card));
+                    Empty = emptyCardGameObject.GetComponent<Card>();
+                    Empty.SetProps(CardValue.Empty, CardColor.Special);
+                }
+            }
+        }
     }
 
     public void Hide()
@@ -145,7 +173,7 @@ public class Card : MonoBehaviour
     {
         if (sprites.ContainsKey(CardFront) && sprites.ContainsKey(CardBack))
         {
-            if (showCardFront)
+            if (showCarFace)
             {
                 spriteRenderer.sprite = sprites[CardFront];
             }
@@ -157,11 +185,7 @@ public class Card : MonoBehaviour
     }
 
     public static Card Empty = null;
-    public static Card DrawOnce = null;
     public static Card DrawAndSkip = null;
-
-    private bool customAction = false;
-    private GameAction _Action = GameAction.NextPlayer;
 
     /// <summary>
     /// The color of the card to show
@@ -198,7 +222,8 @@ public class Card : MonoBehaviour
         Wild,
         Empty,
         DrawAndGoAgainOnce,
-        DrawAndSkipTurn
+        DrawAndSkipTurn,
+        Custom
     }
 
     /// <summary>
@@ -206,7 +231,12 @@ public class Card : MonoBehaviour
     /// </summary>
     public void FlipCardOver()
     {
-        showCardFront = !showCardFront;
+        showCarFace = !showCarFace;
+    }
+
+    public void SetCardFaceUp(bool faceUp)
+    {
+        showCarFace = faceUp;
     }
     /// <summary>
     /// Gets the value of the custom draw card amount
@@ -227,44 +257,6 @@ public class Card : MonoBehaviour
     /// Gets the color to be played for the wild card
     /// </summary>
     public CardColor WildColor { get; private set; }
-   
-    /// <summary>
-    /// Gets the game action this card will perform
-    /// </summary>
-    public GameAction Action
-    {
-        get
-        {
-            if (customAction)
-            {
-                return _Action;
-            }
-
-            switch (this.Value)
-            {
-                case Card.CardValue.Wild:
-                    return GameAction.Wild;
-                case Card.CardValue.DrawTwo:
-                    return GameAction.DrawTwo;
-                case Card.CardValue.Skip:
-                    return GameAction.Skip;
-                case Card.CardValue.Reverse:
-                    return GameAction.Reverse;
-                case Card.CardValue.DrawFour:
-                    return GameAction.DrawFour;
-                case Card.CardValue.DrawAndGoAgainOnce:
-                    return GameAction.DrawAndPlayOnce;
-                case Card.CardValue.DrawAndSkipTurn:
-                    return GameAction.DrawAndSkip;
-                default:
-                    return GameAction.NextPlayer;
-            }
-        }
-        private set
-        {
-            _Action = value;
-        }
-    }
 
     /// <summary>
     /// Gets the message for the cusotom card
@@ -280,11 +272,14 @@ public class Card : MonoBehaviour
     {
         this.Color = color;
         this.Value = value;
-        spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
-        AsyncOperationHandle<Sprite[]> spriteHandleBack = Addressables.LoadAssetAsync<Sprite[]>(spriteBack);
-        spriteHandleBack.Completed += LoadCardBackSpriteToClass;
-        AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
-        spriteHandle.Completed += LoadCardFrontSpriteToClass;
+        if (this.Color != CardColor.Special)
+        {
+            spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
+            AsyncOperationHandle<Sprite[]> spriteHandleBack = Addressables.LoadAssetAsync<Sprite[]>(spriteBack);
+            spriteHandleBack.Completed += LoadCardBackSpriteToClass;
+            AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
+            spriteHandle.Completed += LoadCardFrontSpriteToClass;
+        }
     }
 
     /// <summary>
@@ -295,18 +290,16 @@ public class Card : MonoBehaviour
     /// <param name="action">The action of the custom card</param>
     /// <param name="customMessage">Add a message to this card.</param>
     /// <param name="drawNumber">If using <see cref="GameAction.DrawCustom"/> you must specify a number here.</param>
-    public void SetProps(CardValue value, CardColor color, GameAction action, string customMessage, int drawNumber)
+    public void SetProps(CardValue value, CardColor color, string customMessage, int drawNumber)
     {
         this.Color = color;
         this.WildColor = color;
         this.Value = value;
-        this.Action = action;
         this.CardMessage = customMessage;
-        if (action == GameAction.DrawCustom)
+        if (value == CardValue.Custom)
         {
             CustomDrawAmount = drawNumber > 0 ? drawNumber : throw new ArgumentOutOfRangeException("If you specify a custom draw card you must also specify a non-zerp number.");
         }
-        customAction = true;
     }
 
     /// <summary>

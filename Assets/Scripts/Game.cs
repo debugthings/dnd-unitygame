@@ -87,9 +87,7 @@ public class Game : MonoBehaviour
     }
 
     private const float cardStackZOrderOffset = 0.01f;
-    private const float maxJitterTranslation = 0.06f;
-    private const float maxJitterRotation = 2.0f;
-    private SortedDictionary<Guid, Card> deck = new SortedDictionary<Guid, Card>();
+
     private CircularList<Player> players = new CircularList<Player>();
 
     private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
@@ -102,54 +100,46 @@ public class Game : MonoBehaviour
     private int numberOfDecks = 1;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
 
-    private float maxStackDepth = 0.0f;
-
-    public Card dealDeck;
-    public Card discardDeck;
-    public Player player;
-    public ComputerPlayer computerPlayer;
-    
-    public AssetReference cardReference;
-    public AssetReference dimmableCardReference;
-
 
     private GameObject cardPrefab;
     private GameObject dimmableCardPrefab;
+    private GameObject playerPrefab;
+    private GameObject computerPlayerPrefab;
+    private GameObject winnerBannerPrefab;
 
+    public CardDeck dealDeck;
+    public CardDeck discardDeck;
 
-    private GameObject winnerBanner = null;
+    // These are objects that are created on the fly so we want to load the asset from the asset store
+    public AssetReference playerReference;
+    public AssetReference computerPlayerReference;
+    public AssetReference cardReference;
+    public AssetReference dimmableCardReference;
+    public AssetReference winnerBanner;
 
+    public Player CurrentPlayer => players.Current();
 
-    public Card TopCardOnDiscard => this.DiscardPile.Peek();
-    public Card TopCardOnDeal => this.DealPile.Peek();
-    public Player CurrentPlayer => this.players.Current();
-
-    public Player HumanPlayer = null;
+    /// <summary>
+    /// Gets the singular local player
+    /// </summary>
+    public Player LocalPlayer { get; private set; }
     private bool stopGame;
 
 
     // Start is called before the first frame update
     async void Start()
     {
-
         Debug.Log("Entered Start()");
         rand.InitState();
-        this.gameOptions = gameOptions ?? new GameOptions();
+        gameOptions = gameOptions ?? new GameOptions();
 
-        Debug.Log("Loading Card Prefab");
-        var cardPre = cardReference.LoadAssetAsync<GameObject>();
-        cardPrefab = await cardPre.Task;
+        await LoadAllPrefabs();
 
-        Debug.Log("Loading Dimmable Card Prefab");
-        var dimmablePrefabOperation = dimmableCardReference.LoadAssetAsync<GameObject>();
-        dimmableCardPrefab = await dimmablePrefabOperation.Task;
-
-        Debug.Log("Card Prefab Loaded");
-        if (this.gameOptions.HumanPlayers < 1)
+        if (gameOptions.HumanPlayers < 1)
         {
             throw new ArgumentOutOfRangeException("You must have 1 or more human players for this game!");
         }
-        this.numOfPlayers = this.gameOptions.HumanPlayers + this.gameOptions.ComputerPlayers;
+        numOfPlayers = gameOptions.HumanPlayers + gameOptions.ComputerPlayers;
 
 
         int totalPlayer = 1;
@@ -161,14 +151,14 @@ public class Game : MonoBehaviour
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
         // For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
-        int baseNumber = (numOfPlayers - (numOfPlayers % this.gameOptions.PlayersPerDeck)) / this.gameOptions.PlayersPerDeck;
-        if ((numOfPlayers % this.gameOptions.PlayersPerDeck) > this.gameOptions.PlayersPerDeck / 2)
+        int baseNumber = (numOfPlayers - (numOfPlayers % gameOptions.PlayersPerDeck)) / gameOptions.PlayersPerDeck;
+        if ((numOfPlayers % gameOptions.PlayersPerDeck) > gameOptions.PlayersPerDeck / 2)
         {
             baseNumber++;
         }
 
         // We should always have 1 deck but a max of max decks (5)
-        numberOfDecks = MathExtension.Clamp(baseNumber, this.gameOptions.BaseNumberOfDecks, this.gameOptions.MaxDecks);
+        numberOfDecks = MathExtension.Clamp(baseNumber, gameOptions.BaseNumberOfDecks, gameOptions.MaxDecks);
 
         // Remove cards so we can just use the loops below
         FixupCardsPerColor();
@@ -177,19 +167,13 @@ public class Game : MonoBehaviour
         // Build the deck and create a random placement
         // Shuffling idea taken from https://blog.codinghorror.com/shuffling/
         // There are two sets of numbers and action cards per color per deck
-        for (int num = 0; num < (this.numberOfDecks * 2); num++)
+        for (int num = 0; num < (numberOfDecks * 2); num++)
         {
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
                 for (int cardValueIndex = 0; cardValueIndex < cardValuesArray.Count; cardValueIndex++)
                 {
-
-                    GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
-                    var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
-                    instantiatedCard.SetProps(cardValuesArray[cardValueIndex], cardColorArray[colorIndex]);
-                    instantiatedCard.name = instantiatedCard.ToString();
-                    Debug.Log($"Built {instantiatedCard.name}");
-                    deck.Add(Guid.NewGuid(), instantiatedCard);
+                    CreateCardOnDealDeck(cardColorArray[colorIndex], cardValuesArray[cardValueIndex]);
                 }
             }
         }
@@ -197,16 +181,12 @@ public class Game : MonoBehaviour
         Debug.Log("Build Zero Cards");
 
         // There is one set of Zero cards per color per deck
-        for (int num = 0; num < this.numberOfDecks; num++)
+        for (int num = 0; num < numberOfDecks; num++)
         {
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
-                GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
-                var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
-                instantiatedCard.SetProps(Card.CardValue.Zero, cardColorArray[colorIndex]);
-                instantiatedCard.name = instantiatedCard.ToString();
-                Debug.Log($"Built {instantiatedCard.name}");
-                deck.Add(Guid.NewGuid(), instantiatedCard);
+                CreateCardOnDealDeck(cardColorArray[colorIndex], Card.CardValue.Zero);
+
             }
         }
 
@@ -215,46 +195,27 @@ public class Game : MonoBehaviour
         // Generate the correct number of wild cards 4 cards per number of decks...
         for (int i = 0; i < 4 * numberOfDecks; i++)
         {
-            GameObject instantiatedWildCardObject = Instantiate(cardPrefab, dealDeck.transform);
-            var instantiatedWildCard = instantiatedWildCardObject.GetComponent<Card>();
-            instantiatedWildCard.SetProps(Card.CardValue.Wild, Card.CardColor.Wild);
-            instantiatedWildCard.name = instantiatedWildCard.ToString();
-            Debug.Log($"Built {instantiatedWildCard.name}");
-
-
-            GameObject instantiatedDrawFourCardObject = Instantiate(cardPrefab, dealDeck.transform);
-            var instantiatedDrawFourCard = instantiatedDrawFourCardObject.GetComponent<Card>();
-            instantiatedDrawFourCard.SetProps(Card.CardValue.DrawFour, Card.CardColor.Wild);
-            instantiatedDrawFourCard.name = instantiatedDrawFourCard.ToString();
-            Debug.Log($"Built {instantiatedDrawFourCard.name}");
-
-            // Add these to the deck
-            deck.Add(Guid.NewGuid(), instantiatedWildCard);
-            deck.Add(Guid.NewGuid(), instantiatedDrawFourCard);
+            CreateCardOnDealDeck(Card.CardColor.Wild, Card.CardValue.Wild);
+            CreateCardOnDealDeck(Card.CardColor.Wild, Card.CardValue.DrawFour);
         }
 
-        // Use this to generate a proper zorder of the deck
-        maxStackDepth = deck.Count() * cardStackZOrderOffset;
+        // Use this to generate a proper z-order of the deck
+        dealDeck.MaxStackDepth = dealDeck.Count() * cardStackZOrderOffset;
+        discardDeck.MaxStackDepth = dealDeck.Count() * cardStackZOrderOffset;
+
 
         Debug.Log("Build deck and add jitter");
         // Push the cards in the random order to a Stack...
-        foreach (var card in deck)
-        {
-            CardPositionJitter(card.Value, DealPile.Count);
-            DealPile.Push(card.Value);
-        }
+        dealDeck.Shuffle();
 
-        // Make sure there are no references to these cards anywhere else.
-        deck.Clear();
-
-        Debug.Log("Deal cards to pla");
+        Debug.Log("Deal cards to players");
         // Deal out the players 
-        for (int i = 0; i < this.gameOptions.NumberOfCardsToDeal; i++)
+        for (int i = 0; i < gameOptions.NumberOfCardsToDeal; i++)
         {
             for (int j = 0; j < numOfPlayers; j++)
             {
                 // The circular list allows us to start dealing from the "first" position
-                players.Current().AddCard(DealPile.Pop());
+                players.Current().AddCard(TakeFromDealPile());
                 players.Next();
             }
         }
@@ -274,12 +235,47 @@ public class Game : MonoBehaviour
         // If it's a wild the first player chooses the color.
         // If it's a wild draw four the card goes back into the pile.
         FirstPlay(CurrentPlayer);
+
         Debug.Log("Leaving Start()");
+    }
+
+    private void CreateCardOnDealDeck(Card.CardColor cardColor, Card.CardValue cardValue)
+    {
+        GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
+        var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
+        instantiatedCard.SetProps(cardValue, cardColor);
+        instantiatedCard.name = instantiatedCard.ToString();
+        Debug.Log($"Built {instantiatedCard.name}");
+        dealDeck.AddCardToDeck(instantiatedCard, false);
+    }
+
+    private async Task LoadAllPrefabs()
+    {
+        Debug.Log("Loading Card Prefab");
+        var cardPre = cardReference.LoadAssetAsync<GameObject>();
+        cardPrefab = await cardPre.Task;
+
+        Debug.Log("Loading Dimmable Card Prefab");
+        var dimmablePrefabOperation = dimmableCardReference.LoadAssetAsync<GameObject>();
+        dimmableCardPrefab = await dimmablePrefabOperation.Task;
+
+        Debug.Log("Loading Player Prefab");
+        var playerPrefabOperation = playerReference.LoadAssetAsync<GameObject>();
+        playerPrefab = await playerPrefabOperation.Task;
+
+        Debug.Log("Loading Copmuter Player Prefab");
+        var computerPlayerPrefabOperation = computerPlayerReference.LoadAssetAsync<GameObject>();
+        computerPlayerPrefab = await computerPlayerPrefabOperation.Task;
+
+        Debug.Log("Loading Copmuter Player Prefab");
+        var winnerBannerOperation = winnerBanner.LoadAssetAsync<GameObject>();
+        winnerBannerPrefab = await winnerBannerOperation.Task;
+
     }
 
     private void FirstPlay(Player player)
     {
-        var firstCard = DiscardPile.Peek();
+        var firstCard = dealDeck.PeekTopCard();
         switch (firstCard.Value)
         {
             case Card.CardValue.Skip:
@@ -295,24 +291,68 @@ public class Game : MonoBehaviour
                 break;
             case Card.CardValue.DrawFour:
                 // When we have a draw four we need to put it back into the deck.
-                PutCardBackInDeckInRandomPoisiton();
+                dealDeck.PutCardBackInDeckInRandomPoisiton(discardDeck.TakeTopCard(), 3, 50);
+                discardDeck.AddCardToDeck(dealDeck.TakeTopCard(), true);
                 break;
             default:
                 break;
         }
     }
 
+    public bool PlayerCanMakeMove()
+    {
+        return CurrentPlayer == LocalPlayer;
+    }
+
+    public void PlayClickedCard(Card cardObject)
+    {
+        if (PlayerCanMakeMove())
+        {
+            var cardDeck = cardObject.GetComponentInParent<CardDeck>();
+            var player = cardObject.GetComponentInParent<Player>();
+            if (cardDeck is CardDeck && cardDeck.name == "DealDeck")
+            {
+
+                // If we're in play and the player decides to draw, either the card will be played or added to the hand.
+                // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
+                // the click originated from the player.
+                var cardToPlay = TakeFromDealPile();
+                if (cardToPlay.CanPlay(discardDeck.PeekTopCard()))
+                {
+                    cardToPlay.SetCardFaceUp(true);
+                    GameLoop(cardToPlay, LocalPlayer);
+                }
+                else
+                {
+                    LocalPlayer.AddCard(cardToPlay);
+                    GameLoop(Card.Empty, LocalPlayer);
+                }
+            }
+            else if (player is Player)
+            {
+                // If we're here we've likely tried to play a card. We need to check to see the card is okay to play.
+                var cardToPlay = LocalPlayer.PlayCard(cardObject, discardDeck.PeekTopCard(), false);
+                if (cardToPlay != Card.Empty)
+                {
+                    GameLoop(cardObject, LocalPlayer);
+                }
+            }
+        }
+
+
+    }
+
     private int BuildComputerPlayers(int totalPlayer)
     {
-        for (int i = 0; i < this.gameOptions.ComputerPlayers; i++)
+        for (int i = 0; i < gameOptions.ComputerPlayers; i++)
         {
-            var ply = PlaceInCircle(transform, computerPlayer, totalPlayer++ - 1, numOfPlayers, 0.5f);
+            var ply = PlaceInCircle<ComputerPlayer>(transform, computerPlayerPrefab, totalPlayer++ - 1, numOfPlayers, 0.5f);
             string s = $"Computer {i + 1}";
             ply.CurrentGame = this;
             ply.SetName(s);
             ply.name = s;
             ply.DimmableCardObject = dimmableCardPrefab;
-            this.players.Add(ply);
+            players.Add(ply);
         }
 
         return totalPlayer;
@@ -320,15 +360,15 @@ public class Game : MonoBehaviour
 
     private int BuildHumanPlayers(int totalPlayer)
     {
-        for (int i = 0; i < this.gameOptions.HumanPlayers; i++)
+        for (int i = 0; i < gameOptions.HumanPlayers; i++)
         {
-            var ply = PlaceInCircle(transform, player, totalPlayer++ - 1, numOfPlayers, 0.5f);
+            var ply = PlaceInCircle<Player>(transform, playerPrefab, totalPlayer++ - 1, numOfPlayers, 0.5f);
             var s = $"Human Player";
             ply.CurrentGame = this;
             ply.SetName(s);
             ply.name = s;
-            this.players.Add(ply);
-            HumanPlayer = ply;
+            players.Add(ply);
+            LocalPlayer = ply;
         }
 
         return totalPlayer;
@@ -336,6 +376,8 @@ public class Game : MonoBehaviour
 
     private void FixupCardsPerColor()
     {
+        // We should only add custom cards when it's time...
+        cardValuesArray.Remove(Card.CardValue.Custom);
         // There is only 1 zero per color...
         cardValuesArray.Remove(Card.CardValue.Zero);
         // Removing the color coded wild cards to match a deck
@@ -347,6 +389,29 @@ public class Game : MonoBehaviour
         cardValuesArray.Remove(Card.CardValue.DrawAndSkipTurn);
     }
 
+    private GameAction ConvertCardToAction(Card.CardValue cardValue)
+    {
+        switch (cardValue)
+        {
+            case Card.CardValue.Wild:
+                return GameAction.Wild;
+            case Card.CardValue.DrawTwo:
+                return GameAction.DrawTwo;
+            case Card.CardValue.Skip:
+                return GameAction.Skip;
+            case Card.CardValue.Reverse:
+                return GameAction.Reverse;
+            case Card.CardValue.DrawFour:
+                return GameAction.DrawFour;
+            case Card.CardValue.DrawAndGoAgainOnce:
+                return GameAction.DrawAndPlayOnce;
+            case Card.CardValue.DrawAndSkipTurn:
+                return GameAction.DrawAndSkip;
+            default:
+                return GameAction.NextPlayer;
+        }
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -356,41 +421,33 @@ public class Game : MonoBehaviour
     /// <summary>
     /// The game options that control how the game behaves
     /// </summary>
-    private static T PlaceInCircle<T>(Transform centerOfScreen, T prefab, int itemNumber, int totalObjects, float radius) where T : MonoBehaviour
+    private static T PlaceInCircle<T>(Transform centerOfScreen, GameObject prefab, int itemNumber, int totalObjects, float radius) where T : MonoBehaviour
     {
         float angle = itemNumber * Mathf.PI * 2 / totalObjects;
-        T player = default(T);
+        GameObject playerInstantiate = null;
         // TODO Properly place the players at the correct locations.
         if (itemNumber == 0)
         {
-            player = Instantiate(prefab, new Vector3(0, -5), Quaternion.identity, centerOfScreen);
+            playerInstantiate = Instantiate(prefab, new Vector3(0, -5), Quaternion.identity, centerOfScreen);
         }
         else if (itemNumber == 1)
         {
-            player = Instantiate(prefab, new Vector3(9, 0), Quaternion.identity, centerOfScreen);
+            playerInstantiate = Instantiate(prefab, new Vector3(9, 0), Quaternion.identity, centerOfScreen);
         }
         else if (itemNumber == 2)
         {
-            player = Instantiate(prefab, new Vector3(0, 5), Quaternion.identity, centerOfScreen);
+            playerInstantiate = Instantiate(prefab, new Vector3(0, 5), Quaternion.identity, centerOfScreen);
         }
         else if (itemNumber == 3)
         {
-            player = Instantiate(prefab, new Vector3(-9, 0), Quaternion.identity, centerOfScreen);
+            playerInstantiate = Instantiate(prefab, new Vector3(-9, 0), Quaternion.identity, centerOfScreen);
         }
+
+        var player = playerInstantiate.GetComponent<T>();
         player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
 
         return player;
     }
-
-    /// <summary>
-    /// The pile where the cards are dealt from
-    /// </summary>
-    public Stack<Card> DealPile { get; set; } = new Stack<Card>();
-
-    /// <summary>
-    /// THe pile where the cards are discarded to
-    /// </summary>
-    public Stack<Card> DiscardPile { get; set; } = new Stack<Card>();
 
     /// <summary>
     /// Pulls a card from the deal pile and will automatically swap the discard pile if needed
@@ -398,20 +455,11 @@ public class Game : MonoBehaviour
     /// <returns></returns>
     public Card TakeFromDealPile()
     {
-        if (this.DealPile.Count == 0)
+        if (dealDeck.Count == 0)
         {
-            // Since we've flipped the items over we would visually expect the deck to be flipped each time.
-            while (DiscardPile.Count > 0)
-            {
-                var item = DiscardPile.Pop();
-                item.FlipCardOver();
-                item.transform.SetParent(dealDeck.transform, false);
-                item.transform.SetPositionAndRotation(dealDeck.transform.position, Quaternion.identity);
-                CardPositionJitter(item, DealPile.Count);
-                DealPile.Push(item);
-            }
+            dealDeck.SwapCardsFromOtherDeck(discardDeck);
         }
-        return this.DealPile.Pop();
+        return dealDeck.TakeTopCard();
     }
 
     /// <summary>
@@ -423,41 +471,22 @@ public class Game : MonoBehaviour
     /// <returns></returns>
     public GameAction PutCardOnDiscardPile(Card card, bool dontCheckEquals, bool flipCard)
     {
+        var cardAction = ConvertCardToAction(card.Value);
         // Some special cases where we don't push the card to the pile since it's a 
-        if (card.Action == GameAction.DrawAndPlayOnce || card.Action == GameAction.DrawAndSkip)
+        if (cardAction == GameAction.DrawAndPlayOnce || cardAction == GameAction.DrawAndSkip)
         {
-            return card.Action;
+            return cardAction;
         }
 
         // If we have a card that will play we need to continue on
-        if (dontCheckEquals || this.DiscardPile.Peek().CanPlay(card))
+        if (dontCheckEquals || discardDeck.PeekTopCard().CanPlay(card))
         {
             // Take the card that is in play and put it on top.
-            this.DiscardPile.Push(card);
-            if (flipCard)
-            {
-                card.FlipCardOver();
-            }
-            card.transform.SetParent(discardDeck.transform);
-            card.transform.SetPositionAndRotation(discardDeck.transform.position, Quaternion.identity);
-            CardPositionJitter(card, DiscardPile.Count);
-            return card.Action;
+            discardDeck.AddCardToDeck(card, true);
+            return cardAction;
         }
 
         return GameAction.NextPlayer;
-    }
-
-    /// <summary>
-    /// Applies a random XY translation and a random rotation
-    /// </summary>
-    /// <param name="card"></param>
-    /// <param name="count"></param>
-    private void CardPositionJitter(Card card, float count)
-    {
-        var v3 = card.transform.position;
-        rand.NextFloat(-maxJitterTranslation, maxJitterTranslation);
-        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(0.02f, maxJitterTranslation), v3.y + rand.NextFloat(0.02f, maxJitterTranslation), (v3.z + maxStackDepth) - (count + 1) * cardStackZOrderOffset), Quaternion.identity);
-        card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
     }
 
     /// <summary>
@@ -465,7 +494,7 @@ public class Game : MonoBehaviour
     /// </summary>
     /// <param name="c"></param>
     /// <param name="player"></param>
-    public async void GameLoop(Card c, Player player)
+    public void GameLoop(Card c, Player player)
     {
 
         if (c != Card.Empty && player == players.Current() && !stopGame)
@@ -475,18 +504,16 @@ public class Game : MonoBehaviour
 
         if (player.CheckWin())
         {
-            AsyncOperationHandle<GameObject> winnerPrefabLoad = Addressables.LoadAssetAsync<GameObject>("Assets/Prefabs/WinBanner.prefab");
-            winnerBanner = await winnerPrefabLoad.Task;
-
-            var textMeshProObjects = winnerBanner.GetComponentsInChildren<TextMeshPro>();
+            var textMeshProObjects = winnerBannerPrefab.GetComponentsInChildren<TextMeshPro>();
             foreach (var item in textMeshProObjects)
             {
                 item.text = $"{player.name} WINS!";
 
             }
-            Instantiate(winnerBanner, this.transform);
+            Instantiate(winnerBannerPrefab, transform);
             stopGame = true;
-        } else
+        }
+        else
         {
             // Un dim the computer player so it gives us an indication that they are playing
             var compPlayer = players.Next();
@@ -510,8 +537,8 @@ public class Game : MonoBehaviour
             var playerRef = CurrentPlayer as ComputerPlayer;
             try
             {
-                var card = playerRef.PlayCard(TopCardOnDiscard, false);
-                if (card == null)
+                var card = playerRef.PlayCard(null, discardDeck.PeekTopCard(), false);
+                if (card == Card.Empty)
                 {
                     playerRef.AddCard(TakeFromDealPile());
                     GameLoop(Card.Empty, playerRef);
@@ -539,29 +566,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Puts the card back in a pseudo random spot that is at least 2n numbers of players into the middle up to n number of players from the bottom. 
-    /// </summary>
-    private void PutCardBackInDeckInRandomPoisiton()
-    {
-        // Since we want to preserve the order of the deck we need to pop the required number of cards off the pile
-        var unshift = (new System.Random()).Next(numOfPlayers * (new System.Random()).Next(2, 4), DealPile.Count - numOfPlayers);
-        var cards = new Stack<Card>();
-        // First take the cards off the top of the stack and put them on another
-        for (int i = 0; i < unshift; i++)
-        {
-            cards.Push(DealPile.Pop());
-        }
-        // Push the offending card from the discard pile on the new "cut" stack.
-        DealPile.Push(DiscardPile.Pop());
-        // Push all cards back onto the deal pile
-        for (int i = 0; i < unshift; i++)
-        {
-            DealPile.Push(cards.Pop());
-        }
-        // Take the next card from the top of the deal pile and put it on the discard pile.
-        DiscardPile.Push(TakeFromDealPile());
-    }
+
 
     /// <summary>
     /// The business end of the game mechanics. Will apply the actions to the correct players

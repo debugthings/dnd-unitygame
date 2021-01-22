@@ -60,7 +60,7 @@ public class ComputerPlayer : Player
 
     }
 
-    public override Card PlayCard(Card cardToPlayAgainst, bool addToHand)
+    public override Card PlayCard(Card card, Card cardToPlayAgainst, bool addToHand)
     {
         // For this action we'll check to see if we have any cards to play
         // If we don't we need to return an empty card so we have the correct game action

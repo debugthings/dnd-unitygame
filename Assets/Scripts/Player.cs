@@ -11,7 +11,6 @@ public class Player : MonoBehaviour
     protected const float maxJitterRotation = 2.0f;
     protected Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
 
-    private Card cardPrefab;
     private int turnCounter = 0;
     public Game CurrentGame { get; set; }
 
@@ -63,9 +62,8 @@ public class Player : MonoBehaviour
     /// </remarks>
     /// <param name="cardToPlayAgainst">The card that is currently being played against.</param>
     /// <returns>The card selected from the player's hand.</returns>
-    public virtual Card PlayCard(Card myCard, bool addCardToHand)
+    public virtual Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addCardToHand)
     {
-        var cardToPlayAgainst = CurrentGame.TopCardOnDiscard;
         if (cardToPlayAgainst.CanPlay(myCard))
         {
             if (myCard.Color == Card.CardColor.Wild)
@@ -115,7 +113,7 @@ public class Player : MonoBehaviour
     /// <param name="cardToAdd"></param>
     public virtual void AddCard(Card cardToAdd)
     {
-        cardToAdd.FlipCardOver();
+        cardToAdd.SetCardFaceUp(true);
         AddCardToHand(cardToAdd);
     }
 

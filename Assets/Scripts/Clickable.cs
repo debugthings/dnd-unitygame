@@ -45,48 +45,12 @@ public class Clickable : MonoBehaviour
                 {
                     // Clickable is parented by the "GameBoard" object which is an instance of Game
                     var game = gameObject.GetComponentInParent<Game>();
-                    var currentPlayer = game.CurrentPlayer;
-                    var cardObjectHitTest = hit.collider.gameObject.GetComponent<Card>();
+                    var cardObject = hit.collider.gameObject.GetComponent<Card>();
 
-                    // Right now in a local game ONLY the human player can make a move
-                    if (cardObjectHitTest is Card && currentPlayer == game.HumanPlayer)
+                    if (cardObject is Card)
                     {
-                        var cardToCheck = (cardObjectHitTest as Card);
-                        if (cardToCheck != null)
-                        {
-                            if (cardToCheck.name.Equals("DealDeck", StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                // If we're in play and the player decides to draw, either the card will be played or added to the hand.
-                                
-                                // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
-                                // the click originated from the player.
-                                var cardToPlay = game.TakeFromDealPile();
-                                if (cardToPlay.CanPlay(game.TopCardOnDiscard))
-                                {
-                                    cardToPlay.FlipCardOver();
-                                    game.GameLoop(cardToPlay, game.HumanPlayer);
-                                }
-                                else
-                                {
-                                    game.HumanPlayer.AddCard(cardToPlay);
-                                    game.GameLoop(Card.Empty, game.HumanPlayer);
-                                }
-                            }
-                            else if (cardToCheck.gameObject.name.Equals("DiscardDeck", StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                // Do nothing but let's keep this here so we know that it's doing nothing..
-                            }
-                            else
-                            {
-                                // If we're here we've likely tried to play a card. We need to check to see the card is okay to play.
-                                var player = cardObjectHitTest.GetComponentInParent<Player>();
-                                var cardToPlay = player.PlayCard(cardObjectHitTest, false);
-                                if (cardToPlay != Card.Empty)
-                                {
-                                    game.GameLoop(cardObjectHitTest, player);
-                                }
-                            }
-                        }
+                        // If the player clicked on a card let's do the work to make the play
+                        game.PlayClickedCard(cardObject);
                     }
                     ResetClick();
                 }
