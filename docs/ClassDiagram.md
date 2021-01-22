@@ -1,27 +1,4 @@
+# Player Class
+This class represents the player. Local, computer or network all derive from the same base class. When in client mode the "Network" player becomes the local player.
 
-```mermaid
-classDiagram
-    MonoBehavior <|-- Player
-    Player <|-- NetworkPlayer
-    Player <|-- LocalPlayer
-    Player <|-- ComputerPlayer
-
-    Player : +Guid ID
-    Player : +Card cardPrefab
-    Player : +String Name
-    Player : +EventHandler<Card> HandChangedEvent
-    Player : +List<Card> Hand
-    Player: +Start() void
-    Player: +Update() void
-    Player: +PlayCard() Card
-    Player: +CanPlay(Card) bool
-
-
-    class NetworkPlayer{
-    }
-    class LocalPlayer{
-    }
-    class ComputerPlayer{
-      +DimCards(bool) void
-    }
-  ```        
+![Player](PlayerClassDiagram.png)

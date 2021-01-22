@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant h as Host (Game)
+    participant s as Service (Azure)
+    participant g as Guest 1..n (Game)
+    h->>s: Create a game
+    s-->>h: Your game id is A1
+    loop Ping
+        h->>s: Ping
+        s-->>h: Ack
+    end
+    g->>s: Hello, I am Gn
+    s-->>g: Hello G(1..n) here is a list of games
+    g->>s: I want to join A1
+    s->>h: G(1..n) wants to join A1
+    h-->>s: Accept
+    s-->>g: A1 Accepted
+    g->>s: Ack for A1
+    s->>h: Ack for G(1..n)
+    loop Ping
+        g->>s: Ping
+        s-->>g: Ack
+    end
+    h->>s: Start Game A1
+    s->>g: Game A1 Started
+    g-->>s: Ack
+    s-->>h: G(1..n) Ack'd Start
