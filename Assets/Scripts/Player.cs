@@ -66,11 +66,6 @@ public class Player : MonoBehaviour
     {
         if (cardToPlayAgainst.CanPlay(myCard))
         {
-            if (myCard.Color == Card.CardColor.Wild)
-            {
-                // TODO add a prompt that will allow the player to select the correct color.
-                AskAboutWild(myCard);
-            }
             RemoveCard(myCard);
             return myCard;
         }

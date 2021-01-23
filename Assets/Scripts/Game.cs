@@ -106,6 +106,8 @@ public class Game : MonoBehaviour
     private GameObject playerPrefab;
     private GameObject computerPlayerPrefab;
     private GameObject winnerBannerPrefab;
+    private GameObject wildCardSelectPrefab;
+
 
     public CardDeck dealDeck;
     public CardDeck discardDeck;
@@ -116,6 +118,8 @@ public class Game : MonoBehaviour
     public AssetReference cardReference;
     public AssetReference dimmableCardReference;
     public AssetReference winnerBanner;
+    public AssetReference wildCardSelect;
+
 
     public Player CurrentPlayer => players.Current();
 
@@ -219,6 +223,8 @@ public class Game : MonoBehaviour
                 players.Next();
             }
         }
+        LocalPlayer.AddCard(dealDeck.FindCardAndTakeIt(Card.CardColor.Wild, Card.CardValue.Wild));
+        LocalPlayer.AddCard(dealDeck.FindCardAndTakeIt(Card.CardColor.Wild, Card.CardValue.DrawFour));
 
         Debug.Log("Dim computer player cards");
         foreach (var item in players)
@@ -271,6 +277,10 @@ public class Game : MonoBehaviour
         var winnerBannerOperation = winnerBanner.LoadAssetAsync<GameObject>();
         winnerBannerPrefab = await winnerBannerOperation.Task;
 
+        Debug.Log("Loading Wild Card Select Prefab");
+        var wildCardOperation = wildCardSelect.LoadAssetAsync<GameObject>();
+        wildCardSelectPrefab = await wildCardOperation.Task;
+
     }
 
     private void FirstPlay(Player player)
@@ -320,7 +330,15 @@ public class Game : MonoBehaviour
                 if (cardToPlay.CanPlay(discardDeck.PeekTopCard()))
                 {
                     cardToPlay.SetCardFaceUp(true);
-                    GameLoop(cardToPlay, LocalPlayer);
+
+                    if (cardToPlay.Color == Card.CardColor.Wild)
+                    {
+                        HandleWildCard(cardToPlay);
+                    }
+                    else
+                    {
+                        GameLoop(cardToPlay, LocalPlayer);
+                    }
                 }
                 else
                 {
@@ -334,12 +352,31 @@ public class Game : MonoBehaviour
                 var cardToPlay = LocalPlayer.PlayCard(cardObject, discardDeck.PeekTopCard(), false);
                 if (cardToPlay != Card.Empty)
                 {
-                    GameLoop(cardObject, LocalPlayer);
+                    if (cardToPlay.Color == Card.CardColor.Wild)
+                    {
+                        HandleWildCard(cardToPlay);
+                    }
+                    else
+                    {
+                        GameLoop(cardObject, LocalPlayer);
+                    }
                 }
             }
         }
 
 
+    }
+
+    private void HandleWildCard(Card cardToPlay)
+    {
+        var compButton = wildCardSelectPrefab.GetComponentInChildren<SelectWildButton>();
+        var wildCardPrefab = Instantiate(wildCardSelectPrefab, transform);
+        SelectWildButton.CardToChange = cardToPlay;
+        SelectWildButton.ReturnCard = (card) =>
+        {
+            GameLoop(card, LocalPlayer);
+            Destroy(wildCardPrefab);
+        };
     }
 
     private int BuildComputerPlayers(int totalPlayer)
@@ -546,10 +583,7 @@ public class Game : MonoBehaviour
                 else
                 {
                     GameLoop(card, playerRef);
-                    if (card.Color == Card.CardColor.Wild)
-                    {
-                        card.SetProps(card.Value, card.WildColor);
-                    }
+                    
                 }
                 playerRef.DimCards(true);
             }
@@ -581,6 +615,10 @@ public class Game : MonoBehaviour
 
         // Take the player's card and put it on the discard pile. 
         GameAction ga = PutCardOnDiscardPile(c, false, false);
+        if (c.Color == Card.CardColor.Wild)
+        {
+            c.SetProps(c.Value, c.WildColor);
+        }
         switch (ga)
         {
             case GameAction.Reverse:

@@ -38,6 +38,21 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         CardPositionJitter(c, Count+1);
     }
 
+    public T FindCardAndTakeIt(Card.CardColor color, Card.CardValue value)
+    {
+        var stack = new Stack<Card>();
+        Card c = deck.Pop();
+        while (c.Color != color || c.Value != value)
+        {
+            stack.Push(c);
+            c = deck.Pop();
+        }
+        foreach (var item in stack)
+        {
+            deck.Push(item as T);
+        }
+        return c as T;
+    }
     private void CardPositionJitter(Card card, int count)
     {
         var v3 = this.transform.position;

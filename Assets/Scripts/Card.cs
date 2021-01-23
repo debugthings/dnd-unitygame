@@ -313,6 +313,15 @@ public class Card : MonoBehaviour
             WildColor = color;
         }
     }
+
+    public void SetWildColor(String color)
+    {
+        if (Color == CardColor.Wild)
+        {
+            WildColor = (CardColor)Enum.Parse(typeof(CardColor), color) ;
+        }
+    }
+
     public override string ToString()
     {
         return $"{this.Color} {this.Value}";
