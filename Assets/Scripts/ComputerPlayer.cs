@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class ComputerPlayer : Player
+public class ComputerPlayer : LocalPlayer
 {
 
     
@@ -36,7 +36,7 @@ public class ComputerPlayer : Player
     /// Dims the cards that are dimmable to give visible feedback that the computer player is "thinking"
     /// </summary>
     /// <param name="dim">True to dim, Flase to highlight</param>
-    public void DimCards(bool dim)
+    public override void DimCards(bool dim)
     {
         Debug.Log($"Dimming cards for {this.Name}");
         foreach (var item in dimmableCardList)

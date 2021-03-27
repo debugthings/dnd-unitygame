@@ -6,89 +6,20 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using TMPro;
 using System.Threading.Tasks;
+using System.Threading;
+using Photon.Realtime;
+using Photon.Pun;
+using ExitGames.Client.Photon;
+using Assets.Scripts;
 
-public class Game : MonoBehaviour
+public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
-    public class GameOptions
-    {
-        /// <summary>
-        /// The number of human players for this game.
-        /// </summary>
-        /// <value>Default is 1</value>
-        public int HumanPlayers { get; set; } = 1;
-
-        /// <summary>
-        /// The number of computer players for this game. 
-        /// </summary>
-        /// <value>Default is 3</value>
-        public int ComputerPlayers { get; set; } = 3;
-
-        /// <summary>
-        /// The maximum number of decks for this game.
-        /// </summary>
-        /// <value>Default is 5</value>
-        public int MaxDecks { get; set; } = 5;
-
-        /// <summary>
-        /// The minimum number of decks for this game.
-        /// </summary>
-        /// <value>Default is 1</value>
-        public int BaseNumberOfDecks { get; set; } = 1;
-
-        /// <summary>
-        /// How many cards to deal for the initial hand.
-        /// </summary>
-        /// <value>Default is 5</value>
-        public int NumberOfCardsToDeal { get; set; } = 5;
-
-        /// <summary>
-        /// How many players per deck.
-        /// </summary>
-        /// <remarks>
-        /// What we want to do here is have a game where the number of decks is in some multiple of the number of players
-        /// However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
-        /// For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
-        /// </remarks>
-        /// <value>Default is 4</value>
-        public int PlayersPerDeck { get; set; } = 4;
-
-        /// <summary>
-        /// The maximum number of cards allowed when <see cref="AllowStacking"/> is enabled.
-        /// </summary>
-        public int MaxStackCards { get; set; } = 3;
-
-        /// <summary>
-        /// Allow a player to "stack" cards for play.
-        /// </summary>
-        /// <remarks>
-        /// <para>This is a sure fire way to make everyone hate you. What this value does is allows a player to stack or chain cards.</para>
-        /// <para>For example:</para><para>A player has in their hand: Red Three, Green Three, Wild, Yellow Five, Blue Five. A player is presented with a Red Zero; in normal play they can only play any Red card, any color Zero, or a wild.</para><para>In a stacked game, however, you could chain the cards to play up to the <see cref="MaxStackCards"/> or unitl you'd reach "Uno". Use this at your own risk.</para> 
-        /// </remarks>
-        /// <value>Default is false.</value>
-        public bool AllowStacking { get; set; }
-
-        /// <summary>
-        /// Sets if the player has to call "Uno" when they reach their last card. Will use the <see cref="UnoTimeoutForgiveness"/>
-        /// </summary>
-        /// <value>Defualt is true</value>
-        public bool PlayerHasToCallUno { get; set; } = true;
-
-        /// <summary>
-        /// The amount of time to let the "Uno" player have before they are forced to draw two.
-        /// </summary>
-        /// <remarks>In normal play the person with one card left MUST call "Uno" before the next play so they do not incur a two card penalty. In online play we will have a button to click. If the next player goes before the button is clicked the current "Uno" player will be afforded a time window to click the button.</remarks>
-        /// <value>Default is 5 seconds.</value>
-        public TimeSpan UnoTimeoutForgiveness { get; set; } = TimeSpan.FromSeconds(5);
-
-        /// <summary>
-        /// Most actions are simple, draw 2, draw 4, reverse, etc.
-        /// </summary>
-        public bool AllowCustomActionCards { get; set; }
-    }
+    private readonly LoadBalancingClient client = new LoadBalancingClient();
+    private bool quit;
 
     private const float cardStackZOrderOffset = 0.01f;
 
-    private CircularList<Player> players = new CircularList<Player>();
+    private CircularList<LocalPlayer> players = new CircularList<LocalPlayer>();
 
     private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
     private Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
@@ -99,6 +30,7 @@ public class Game : MonoBehaviour
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
+    private IDictionary<Player, NetworkPlayer> networkPlayersList = new Dictionary<Player, NetworkPlayer>();
 
 
     private GameObject cardPrefab;
@@ -121,20 +53,40 @@ public class Game : MonoBehaviour
     public AssetReference wildCardSelect;
 
 
-    public Player CurrentPlayer => players.Current();
+    public LocalPlayer CurrentPlayer => players.Current();
 
     /// <summary>
     /// Gets the singular local player
     /// </summary>
-    public Player LocalPlayer { get; private set; }
+    public LocalPlayer LocalPlayer { get; private set; }
+
     private bool stopGame;
 
-
     // Start is called before the first frame update
-    async void Start()
+    void Start()
+    {
+        // TODO Initialize a please wait here.
+    }
+
+    public override async void OnJoinedRoom()
+    {
+        await StartGame();
+        base.OnJoinedRoom();
+    }
+    private async Task StartGame()
     {
         Debug.Log("Entered Start()");
-        rand.InitState();
+        if (PhotonNetwork.CurrentRoom.CustomProperties != null)
+        {
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(Constants.SeedKeyName, out object value);
+            uint roomSeed = (uint)value;
+            rand.InitState(roomSeed);
+        }
+        else
+        {
+            rand.InitState();
+        }
+
         gameOptions = gameOptions ?? new GameOptions();
 
         await LoadAllPrefabs();
@@ -143,14 +95,22 @@ public class Game : MonoBehaviour
         {
             throw new ArgumentOutOfRangeException("You must have 1 or more human players for this game!");
         }
-        numOfPlayers = gameOptions.HumanPlayers + gameOptions.ComputerPlayers;
-
+        numOfPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
 
         int totalPlayer = 1;
         Debug.Log("Build human players");
-        totalPlayer = BuildHumanPlayers(totalPlayer);
-        Debug.Log("Build computer players");
-        totalPlayer = BuildComputerPlayers(totalPlayer);
+        totalPlayer = BuildLocalPlayer(totalPlayer);
+        if (numOfPlayers > 1)
+        {
+            Debug.Log("Build computer players");
+            totalPlayer = BuildNetworkPlayers(totalPlayer);
+        }
+        //if (gameOptions.ComputerPlayers > 0)
+        //{
+        //    Debug.Log("Build computer players");
+        //    totalPlayer = BuildComputerPlayers(totalPlayer);
+        //}
+
 
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
@@ -167,6 +127,12 @@ public class Game : MonoBehaviour
         // Remove cards so we can just use the loops below
         FixupCardsPerColor();
 
+        int totalNumberCards = (numberOfDecks * 2) * cardColorArray.Length * cardValuesArray.Count;
+        int totalZeroCards = (numberOfDecks * 2) * cardColorArray.Length;
+        int totalWildCards = (numberOfDecks * 4) * 2;
+
+        int totalCards = totalNumberCards + totalZeroCards + totalWildCards;
+
         Debug.Log("Build Number Cards");
         // Build the deck and create a random placement
         // Shuffling idea taken from https://blog.codinghorror.com/shuffling/
@@ -177,7 +143,7 @@ public class Game : MonoBehaviour
             {
                 for (int cardValueIndex = 0; cardValueIndex < cardValuesArray.Count; cardValueIndex++)
                 {
-                    CreateCardOnDealDeck(cardColorArray[colorIndex], cardValuesArray[cardValueIndex]);
+                    CreateCardOnDealDeck(rand.NextInt(0, totalCards), cardColorArray[colorIndex], cardValuesArray[cardValueIndex]);
                 }
             }
         }
@@ -189,7 +155,7 @@ public class Game : MonoBehaviour
         {
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
-                CreateCardOnDealDeck(cardColorArray[colorIndex], Card.CardValue.Zero);
+                CreateCardOnDealDeck(rand.NextInt(0, totalCards), cardColorArray[colorIndex], Card.CardValue.Zero);
 
             }
         }
@@ -199,18 +165,20 @@ public class Game : MonoBehaviour
         // Generate the correct number of wild cards 4 cards per number of decks...
         for (int i = 0; i < 4 * numberOfDecks; i++)
         {
-            CreateCardOnDealDeck(Card.CardColor.Wild, Card.CardValue.Wild);
-            CreateCardOnDealDeck(Card.CardColor.Wild, Card.CardValue.DrawFour);
+            CreateCardOnDealDeck(rand.NextInt(0, totalCards), Card.CardColor.Wild, Card.CardValue.Wild);
+            CreateCardOnDealDeck(rand.NextInt(0, totalCards), Card.CardColor.Wild, Card.CardValue.DrawFour);
         }
 
         // Use this to generate a proper z-order of the deck
         dealDeck.MaxStackDepth = dealDeck.Count() * cardStackZOrderOffset;
         discardDeck.MaxStackDepth = dealDeck.Count() * cardStackZOrderOffset;
 
-
         Debug.Log("Build deck and add jitter");
         // Push the cards in the random order to a Stack...
         dealDeck.Shuffle();
+
+        // Assing a random id to each card so we can send that to the players
+        dealDeck.AssignRandomId();
 
         Debug.Log("Deal cards to players");
         // Deal out the players 
@@ -223,8 +191,6 @@ public class Game : MonoBehaviour
                 players.Next();
             }
         }
-        LocalPlayer.AddCard(dealDeck.FindCardAndTakeIt(Card.CardColor.Wild, Card.CardValue.Wild));
-        LocalPlayer.AddCard(dealDeck.FindCardAndTakeIt(Card.CardColor.Wild, Card.CardValue.DrawFour));
 
         Debug.Log("Dim computer player cards");
         foreach (var item in players)
@@ -245,11 +211,11 @@ public class Game : MonoBehaviour
         Debug.Log("Leaving Start()");
     }
 
-    private void CreateCardOnDealDeck(Card.CardColor cardColor, Card.CardValue cardValue)
+    private void CreateCardOnDealDeck(int randomValue, Card.CardColor cardColor, Card.CardValue cardValue)
     {
         GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
         var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
-        instantiatedCard.SetProps(cardValue, cardColor);
+        instantiatedCard.SetProps(randomValue, cardValue, cardColor);
         instantiatedCard.name = instantiatedCard.ToString();
         Debug.Log($"Built {instantiatedCard.name}");
         dealDeck.AddCardToDeck(instantiatedCard, false);
@@ -283,7 +249,7 @@ public class Game : MonoBehaviour
 
     }
 
-    private void FirstPlay(Player player)
+    private void FirstPlay(LocalPlayer player)
     {
         var firstCard = dealDeck.PeekTopCard();
         switch (firstCard.Value)
@@ -314,15 +280,19 @@ public class Game : MonoBehaviour
         return CurrentPlayer == LocalPlayer;
     }
 
+    /// <summary>
+    /// Called from the mouse handler to play the actual card. In here we'll handle what happens when a wild card is shown.
+    /// </summary>
+    /// <param name="cardObject"></param>
     public void PlayClickedCard(Card cardObject)
     {
         if (PlayerCanMakeMove())
         {
             var cardDeck = cardObject.GetComponentInParent<CardDeck>();
-            var player = cardObject.GetComponentInParent<Player>();
+            var player = cardObject.GetComponentInParent<LocalPlayer>();
+
             if (cardDeck is CardDeck && cardDeck.name == "DealDeck")
             {
-
                 // If we're in play and the player decides to draw, either the card will be played or added to the hand.
                 // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
                 // the click originated from the player.
@@ -346,7 +316,7 @@ public class Game : MonoBehaviour
                     GameLoop(Card.Empty, LocalPlayer);
                 }
             }
-            else if (player is Player)
+            else if (player is LocalPlayer)
             {
                 // If we're here we've likely tried to play a card. We need to check to see the card is okay to play.
                 var cardToPlay = LocalPlayer.PlayCard(cardObject, discardDeck.PeekTopCard(), false);
@@ -363,8 +333,6 @@ public class Game : MonoBehaviour
                 }
             }
         }
-
-
     }
 
     private void HandleWildCard(Card cardToPlay)
@@ -395,19 +363,38 @@ public class Game : MonoBehaviour
         return totalPlayer;
     }
 
-    private int BuildHumanPlayers(int totalPlayer)
+    private int BuildLocalPlayer(int totalPlayer)
     {
         for (int i = 0; i < gameOptions.HumanPlayers; i++)
         {
-            var ply = PlaceInCircle<Player>(transform, playerPrefab, totalPlayer++ - 1, numOfPlayers, 0.5f);
-            var s = $"Human Player";
+            var ply = PlaceInCircle<LocalPlayer>(transform, playerPrefab, totalPlayer++ - 1, numOfPlayers, 0.5f);
             ply.CurrentGame = this;
-            ply.SetName(s);
-            ply.name = s;
+            ply.SetName(PhotonNetwork.LocalPlayer.NickName);
+            ply.Player = PhotonNetwork.LocalPlayer;
             players.Add(ply);
             LocalPlayer = ply;
         }
 
+        return totalPlayer;
+    }
+
+    private int BuildNetworkPlayers(int totalPlayer)
+    {
+        var playersInRoom = PhotonNetwork.CurrentRoom.Players;
+
+        foreach (var player in playersInRoom)
+        {
+            if (player.Value != PhotonNetwork.LocalPlayer)
+            {
+                var ply = PlaceInCircle<NetworkPlayer>(transform, playerPrefab, totalPlayer++ - 1, numOfPlayers, 0.5f);
+                ply.SetNetworkPlayerObject(player.Value);
+                ply.CurrentGame = this;
+                ply.SetName(player.Value.NickName);
+                players.Add(ply);
+                networkPlayersList.Add(player.Value, ply);
+            }
+
+        }
         return totalPlayer;
     }
 
@@ -526,16 +513,31 @@ public class Game : MonoBehaviour
         return GameAction.NextPlayer;
     }
 
+    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    {
+        if (true)
+        {
+            var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged[Constants.PlayerSendingMessage]);
+            var cardToPlay = playerSending.Hand.Find(card => card.RandomId == (uint)propertiesThatChanged[Constants.CardToPlay]);
+            GameLoop(cardToPlay, playerSending, true);
+        }
+        base.OnRoomPropertiesUpdate(propertiesThatChanged);
+    }
+
     /// <summary>
     /// Performs the primary game mechanic of checking the cards and the player that is performing the action.
     /// </summary>
     /// <param name="c"></param>
     /// <param name="player"></param>
-    public void GameLoop(Card c, Player player)
+    public void GameLoop(Card c, LocalPlayer player, bool calledRemotely = false)
     {
 
         if (c != Card.Empty && player == players.Current() && !stopGame)
         {
+            if (!calledRemotely)
+            {
+                UpdateRoomProperties(c, player);
+            }
             PerformGameAction(c, false);
         }
 
@@ -545,7 +547,6 @@ public class Game : MonoBehaviour
             foreach (var item in textMeshProObjects)
             {
                 item.text = $"{player.name} WINS!";
-
             }
             Instantiate(winnerBannerPrefab, transform);
             stopGame = true;
@@ -553,15 +554,29 @@ public class Game : MonoBehaviour
         else
         {
             // Un dim the computer player so it gives us an indication that they are playing
-            var compPlayer = players.Next();
-            if (compPlayer is ComputerPlayer)
+            var nextPlayer = players.Next();
+            if (nextPlayer is ComputerPlayer)
             {
-                var playerRef = compPlayer as ComputerPlayer;
-                playerRef.DimCards(false);
+                // Add a bogus delay so the game seems like somoene is playing with us.
+                Invoke("CheckAndExecuteComputerPlayerAction", 3.0f);
             }
-            // Add a bogus delay so the game seems like somoene is playing with us.
-            Invoke("CheckAndExecuteComputerPlayerAction", 3.0f);
+            else if (nextPlayer is NetworkPlayer)
+            {
+                // This ends the loop for this play and will wait for the network player to make a move
+            }
+
         }
+    }
+
+    private static void UpdateRoomProperties(Card c, LocalPlayer player)
+    {
+        var hashTable = new ExitGames.Client.Photon.Hashtable
+        {
+            [Constants.SeedKeyName] = PhotonNetwork.CurrentRoom.CustomProperties[Constants.SeedKeyName],
+            [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
+            [Constants.CardToPlay] = c.RandomId
+        };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
     }
 
     /// <summary>
@@ -583,7 +598,7 @@ public class Game : MonoBehaviour
                 else
                 {
                     GameLoop(card, playerRef);
-                    
+
                 }
                 playerRef.DimCards(true);
             }
@@ -601,7 +616,6 @@ public class Game : MonoBehaviour
     }
 
 
-
     /// <summary>
     /// The business end of the game mechanics. Will apply the actions to the correct players
     /// </summary>
@@ -617,7 +631,7 @@ public class Game : MonoBehaviour
         GameAction ga = PutCardOnDiscardPile(c, false, false);
         if (c.Color == Card.CardColor.Wild)
         {
-            c.SetProps(c.Value, c.WildColor);
+            c.SetProps(c.CardRandom, c.Value, c.WildColor);
         }
         switch (ga)
         {

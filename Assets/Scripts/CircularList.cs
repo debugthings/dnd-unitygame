@@ -45,8 +45,6 @@ public class CircularList<T> : List<T>
         return ReverseImpl(_moveForward);
     }
 
-    
-
     private T ReverseImpl(bool moveForward)
     {
         if (moveForward)

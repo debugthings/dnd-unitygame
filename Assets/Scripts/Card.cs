@@ -33,6 +33,9 @@ public class Card : MonoBehaviour
             return (float)_width.Value;
         }
     }
+
+    public uint RandomId { get; set; }
+
     private void LoadCardBackSpriteToClass(AsyncOperationHandle<Sprite[]> obj)
     {
         sprites[CardBack] = obj.Result.First();
@@ -61,7 +64,7 @@ public class Card : MonoBehaviour
                 {
                     drawCardGameObject = new GameObject("DrawAndSkip", typeof(Card));
                     DrawAndSkip = drawCardGameObject.GetComponent<Card>();
-                    DrawAndSkip.SetProps(CardValue.DrawAndSkipTurn, CardColor.Special);
+                    DrawAndSkip.SetProps(int.MinValue,CardValue.DrawAndSkipTurn, CardColor.Special);
                 }
             }
         }
@@ -74,7 +77,7 @@ public class Card : MonoBehaviour
                 {
                     emptyCardGameObject = new GameObject("Empty", typeof(Card));
                     Empty = emptyCardGameObject.GetComponent<Card>();
-                    Empty.SetProps(CardValue.Empty, CardColor.Special);
+                    Empty.SetProps(int.MinValue + 1, CardValue.Empty, CardColor.Special);
                 }
             }
         }
@@ -263,13 +266,15 @@ public class Card : MonoBehaviour
     /// </summary>
     public string CardMessage { get; private set; }
 
+    public  int CardRandom { get; private set; }
     /// <summary>
     /// Sets the card's value and color as well as sets the sprites
     /// </summary>
     /// <param name="value">The value this card should be</param>
     /// <param name="color">The color this card should be</param>
-    public void SetProps(CardValue value, CardColor color)
+    public void SetProps(int cardRandom, CardValue value, CardColor color)
     {
+        this.CardRandom = cardRandom;
         this.Color = color;
         this.Value = value;
         if (this.Color != CardColor.Special)
@@ -290,8 +295,9 @@ public class Card : MonoBehaviour
     /// <param name="action">The action of the custom card</param>
     /// <param name="customMessage">Add a message to this card.</param>
     /// <param name="drawNumber">If using <see cref="GameAction.DrawCustom"/> you must specify a number here.</param>
-    public void SetProps(CardValue value, CardColor color, string customMessage, int drawNumber)
+    public void SetProps(int cardRandom, CardValue value, CardColor color, string customMessage, int drawNumber)
     {
+        this.CardRandom = cardRandom;
         this.Color = color;
         this.WildColor = color;
         this.Value = value;

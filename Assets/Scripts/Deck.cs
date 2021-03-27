@@ -13,10 +13,20 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     private const float maxJitterRotation = 2.0f;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     public float MaxStackDepth { get; set; }
+    public uint RandomSeed = uint.MaxValue; // value to be set by server or by rand
 
     void Awake()
     {
-        rand.InitState((uint)UnityEngine.Random.Range(1, 100000));
+        // When we create the deck we need to make sure that we can be sure to use the same seed value
+        // This will make the async game handle events the same way.
+        if (RandomSeed == uint.MaxValue)
+        {
+            rand.InitState((uint)UnityEngine.Random.Range(1, 100000));
+        } else
+        {
+            rand.InitState(RandomSeed);
+        }
+
     }
     // Start is called before the first frame update
     void Start()
@@ -70,6 +80,14 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         return deck.Peek();
     }
 
+    public void AssignRandomId()
+    {
+        var deckCount = (uint)deck.Count;
+        foreach (var card in deck)
+        {
+            card.RandomId = rand.NextUInt(deckCount);
+        }
+    }
     public void Shuffle()
     {
         // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
@@ -136,8 +154,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     public void PutCardBackInDeckInRandomPoisiton(T c, int distanceFromTop, int distanceFromBottom)
     {
         // Since we want to preserve the order of the deck we need to pop the required number of cards off the pile
-        var unshift = (new System.Random()).Next(distanceFromTop, distanceFromBottom);
-        //var unshift = (new System.Random()).Next(numOfPlayers * (new System.Random()).Next(2, 4), DealPile.Count - numOfPlayers);
+        var unshift = rand.NextInt(distanceFromTop, distanceFromBottom);
         var cards = new Stack<T>();
         // First take the cards off the top of the stack and put them on another
         for (int i = 0; i < unshift; i++)
