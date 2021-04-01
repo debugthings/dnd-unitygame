@@ -24,7 +24,7 @@ namespace Assets.Scripts
         /// The maximum number of decks for this game.
         /// </summary>
         /// <value>Default is 5</value>
-        public int MaxDecks { get; set; } = 5;
+        public int MaxDecks { get; set; } = 2;
 
         /// <summary>
         /// The minimum number of decks for this game.
@@ -47,7 +47,7 @@ namespace Assets.Scripts
         /// For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
         /// </remarks>
         /// <value>Default is 4</value>
-        public int PlayersPerDeck { get; set; } = 4;
+        public int PlayersPerDeck { get; set; } = 6;
 
         /// <summary>
         /// The maximum number of cards allowed when <see cref="AllowStacking"/> is enabled.

@@ -11,8 +11,8 @@ public class SelectWildButton : MonoBehaviour
 
     public void OnButtonPress(string cardColor)
     {
+        Debug.Log($"Wild card button pressed with {cardColor}");
         CardToChange.SetWildColor(cardColor);
         ReturnCard(CardToChange);
-        Debug.Log("Button clicked " + 1 + " times.");
     }  // Start is called before the first frame update
 }

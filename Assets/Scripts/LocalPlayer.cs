@@ -10,8 +10,6 @@ public class LocalPlayer : MonoBehaviour
     protected const float maxJitterTranslation = 0.06f;
     protected const float maxJitterRotation = 2.0f;
     protected Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
-
-    private int turnCounter = 0;
     public Game CurrentGame { get; set; }
 
     public event EventHandler<Card> HandChangedEvent;
@@ -23,6 +21,8 @@ public class LocalPlayer : MonoBehaviour
     /// </summary>
     public List<Card> Hand { get; private set; } = new List<Card>();
 
+    public int MaxNumberOfCardsInRow { get; set; } = 15;
+
     /// <summary>
     /// The player's name.
     /// </summary>
@@ -32,9 +32,12 @@ public class LocalPlayer : MonoBehaviour
 
     protected Card lastCardPulled = Card.Empty;
 
+    protected Vector3 startingPosition = Vector3.negativeInfinity;
+
     // Start is called before the first frame update
     void Start()
     {
+        
     }
 
     void Awake()
@@ -67,22 +70,22 @@ public class LocalPlayer : MonoBehaviour
     /// </remarks>
     /// <param name="cardToPlayAgainst">The card that is currently being played against.</param>
     /// <returns>The card selected from the player's hand.</returns>
-    public virtual Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addCardToHand)
+    public virtual Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addCardToHand, bool removeFromHand = true)
     {
-        if (cardToPlayAgainst.CanPlay(myCard))
+        if (myCard.CanPlay(cardToPlayAgainst))
         {
-            RemoveCard(myCard);
+            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            if (removeFromHand)
+            {
+                RemoveCard(myCard);
+            }
             return myCard;
         }
+
         // Only add it if it can't be played...
         if (addCardToHand)
         {
             AddCard(myCard);
-        }
-
-        if (turnCounter++ > maxTrys)
-        {
-            return Card.DrawAndSkip;
         }
         return Card.Empty;
     }
@@ -94,6 +97,7 @@ public class LocalPlayer : MonoBehaviour
 
     public virtual void RemoveCard(Card cardToRemove)
     {
+        Debug.Log($"Removing {cardToRemove} from {this.Name} hand");
         Hand.Remove(cardToRemove);
         HandChangedEvent(this, cardToRemove);
     }
@@ -123,6 +127,7 @@ public class LocalPlayer : MonoBehaviour
     /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
+        Debug.Log($"Adding card {cardToAdd} for {this.Name}");
         this.Hand.Add(cardToAdd);
         HandChangedEvent(this, cardToAdd);
     }
@@ -133,20 +138,51 @@ public class LocalPlayer : MonoBehaviour
     protected virtual void FixupCardPositions()
     {
         // We should only fixup the positions when a card is added or 
-        float cardsStartingPositionBase = (Hand.Count - 1) * horizontalSpacing;
+        Debug.Log($"Fixing up card positions for {this.Name}");
+
+        if (startingPosition.Equals(Vector3.negativeInfinity))
+        {
+            this.startingPosition = this.transform.localPosition;
+        }
+        // If we're showing multiple rows we need to shift up by some number
+        if (Hand.Count > MaxNumberOfCardsInRow)
+        {
+            var shiftUpby = ((Hand.Count - (Hand.Count % MaxNumberOfCardsInRow)) / MaxNumberOfCardsInRow) * .8f;
+            this.transform.localPosition = startingPosition + (shiftUpby * Vector3.up);
+        }
+
+        // Add the player name and make it parallel to the screen
+        float cardsStartingPositionBase = (MaxNumberOfCardsInRow - 1) * horizontalSpacing;
         int itemNumber = 0;
-        var v3 = this.transform.position;
+        float rowNumber = 0;
         float cardNumber = 0.0f;
+        int numberOfCardsInRow = MaxNumberOfCardsInRow;
         foreach (var cardToAdd in Hand)
         {
-            float cardsStartingPosition = ((cardsStartingPositionBase + cardToAdd.Width) * -0.5f) + (cardToAdd.Width * 0.5f);
-            cardNumber -= zOrderSpacing;
-            cardToAdd.transform.SetParent(this.transform);
-            cardToAdd.transform.SetPositionAndRotation(new Vector3(
-                v3.x + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
-                v3.y + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + 0,
-                v3.z + cardNumber), Quaternion.identity);
-            cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+            // There should only be 5 cards in each row
+            if (itemNumber > 0 && itemNumber % numberOfCardsInRow == 0)
+            {
+                itemNumber = 0;
+                rowNumber++;
+            }
+
+            // Increase the z-order for every row sligthly so we can see them overlap
+            cardNumber += rowNumber * -0.01f;
+
+            if (cardToAdd.tag == "Dimmable")
+            {
+                var allCards = cardToAdd.GetComponent<SpriteRenderer>();
+                var width = allCards.bounds.size.x;
+                float cardsStartingPosition = ((cardsStartingPositionBase + width) * -0.5f) + (width * 0.5f);
+                cardNumber -= zOrderSpacing;
+                cardToAdd.transform.SetParent(this.transform);
+
+                cardToAdd.transform.localPosition = new Vector3(
+                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
+                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
+                    cardNumber);
+                cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+            }
         }
     }
 

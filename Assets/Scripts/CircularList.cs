@@ -31,6 +31,22 @@ public class CircularList<T> : List<T>
         position = MathExtension.Clamp(startPosition, 0, Count - 1);
     }
 
+    public void SetPlayer(T player)
+    {
+        if (this.Current().Equals(player))
+        {
+            return;
+        }
+        else
+        {
+            while (!this.Next().Equals(player))
+            {
+                continue;
+            }
+        }
+
+    }
+
     public new void Reverse()
     {
         _moveForward = !_moveForward;

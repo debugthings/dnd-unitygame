@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: -2730156736690716990}
   m_Layer: 0
   m_Name: Card
-  m_TagString: Card
+  m_TagString: Dimmable
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -95,7 +95,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d6911acb54c32b4198635943576b0b2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  showCardFront: 0
 --- !u!61 &-2730156736690716990
 BoxCollider2D:
   m_ObjectHideFlags: 0

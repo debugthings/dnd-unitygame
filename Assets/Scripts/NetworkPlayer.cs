@@ -8,18 +8,19 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class NetworkPlayer : LocalPlayer
 {
-    
+
     private List<GameObject> dimmableCardList = new List<GameObject>();
     public AssetReference dimmableCardRef;
+    public GameObject playerNameObject;
+    public GameObject gradeint;
 
-    
     void Awake()
     {
         InitializePlayer();
     }
 
     // Start is called before the first frame update
-     void Start()
+    void Start()
     {
 
     }
@@ -29,12 +30,15 @@ public class NetworkPlayer : LocalPlayer
     {
 
     }
+    protected override void InitializePlayer()
+    {
+        base.InitializePlayer();
+    }
 
-    public GameObject DimmableCardObject { get; set; }   
+    public GameObject DimmableCardObject { get; set; }
 
     public override void AddCard(Card cardToAdd)
     {
-        Debug.Log($"Adding card for {this.Name}");
         cardToAdd.Hide();
         cardToAdd.transform.SetParent(this.transform);
         dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
@@ -42,31 +46,22 @@ public class NetworkPlayer : LocalPlayer
 
     }
 
-    public override Card PlayCard(Card card, Card cardToPlayAgainst, bool addToHand)
+    public override Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addToHand, bool removeCard)
     {
-        // For this action we'll check to see if we have any cards to play
-        // If we don't we need to return an empty card so we have the correct game action
-        var cardToRetun = Card.Empty;
-
-        for (int i = 0; i < Hand.Count; i++)
+        if (myCard.CanPlay(cardToPlayAgainst))
         {
-            if (Hand[i].CanPlay(cardToPlayAgainst))
+            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            myCard.Unhide();
+            myCard.FlipCardOver();
+            if (removeCard)
             {
-                if (Hand[i].Color == Card.CardColor.Wild)
-                {
-                    ChooseWildColor(Hand[i], new System.Random().Next(1, 5));
-                }
-                Console.WriteLine();
-                cardToRetun = Hand[i];
-                cardToRetun.Unhide();
-                cardToRetun.FlipCardOver();
-                RemoveCard(cardToRetun);
-                return cardToRetun;
+                RemoveCard(myCard);
             }
+            return myCard;
         }
-
-        return cardToRetun;
+        return Card.Empty;
     }
+
 
     public override void RemoveCard(Card cardToReturn)
     {
@@ -86,11 +81,34 @@ public class NetworkPlayer : LocalPlayer
         // We should only fixup the positions when a card is added or 
         Debug.Log($"Fixing up card positions for {this.Name}");
 
-        float cardsStartingPositionBase = (dimmableCardList.Count - 1) * horizontalSpacing;
+        // Add the player name and make it parallel to the screen
+        var playerName = playerNameObject.GetComponent<TMPro.TMP_Text>();
+        playerName.text = $"{Name} ({Hand.Count})";
+        playerName.autoSizeTextContainer = true;
+        playerName.canvas.transform.Rotate(-playerName.canvas.transform.eulerAngles);
+        
+
+        // We should only fixup the positions when a card is added or 
+        Debug.Log($"Fixing up card positions for {this.Name}");
+
+        // Add the player name and make it parallel to the screen
+        float cardsStartingPositionBase = (MaxNumberOfCardsInRow - 1) * horizontalSpacing;
         int itemNumber = 0;
+        float rowNumber = 0;
         float cardNumber = 0.0f;
+        int numberOfCardsInRow = MaxNumberOfCardsInRow;
         foreach (var cardToAdd in dimmableCardList)
         {
+            // There should only be 5 cards in each row
+            if (itemNumber > 0 && itemNumber % numberOfCardsInRow == 0)
+            {
+                itemNumber = 0;
+                rowNumber++;
+            }
+
+            // Increase the z-order for every row sligthly so we can see them overlap
+            cardNumber += rowNumber * -0.01f;
+
             if (cardToAdd.tag == "Dimmable")
             {
                 var allCards = cardToAdd.GetComponent<SpriteRenderer>();
@@ -101,15 +119,26 @@ public class NetworkPlayer : LocalPlayer
 
                 cardToAdd.transform.localPosition = new Vector3(
                     rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
-                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + 0,
+                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
                     cardNumber);
                 cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
             }
         }
     }
 
-    public void SetNetworkPlayerObject(Photon.Realtime.Player networkPlayer)
+    public override void DimCards(bool dim)
     {
-
+        Debug.Log($"Dimming cards for {this.Name}");
+        foreach (var item in dimmableCardList)
+        {
+            if (item.tag == "Dimmable")
+            {
+                var allCards = item.GetComponent<SpriteRenderer>();
+                var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
+                allCards.color = dimColor;
+            }
+        }
     }
+
+
 }

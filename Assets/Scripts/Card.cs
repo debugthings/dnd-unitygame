@@ -34,7 +34,34 @@ public class Card : MonoBehaviour
         }
     }
 
-    public uint RandomId { get; set; }
+    /// <summary>
+    /// Gets the value of the custom draw card amount
+    /// </summary>
+    public int CustomDrawAmount { get; private set; }
+
+    /// <summary>
+    /// Gets the card's value
+    /// </summary>
+    public CardValue Value { get; private set; }
+
+    /// <summary>
+    /// Gets the card's color
+    /// </summary>
+    public CardColor Color { get; private set; }
+
+    /// <summary>
+    /// Gets the color to be played for the wild card
+    /// </summary>
+    public CardColor WildColor { get; private set; }
+
+    /// <summary>
+    /// Gets the message for the cusotom card
+    /// </summary>
+    public string CardMessage { get; private set; }
+
+    public string WildColorNetworkMessage { get; set; }
+
+    public int CardRandom { get; set; }
 
     private void LoadCardBackSpriteToClass(AsyncOperationHandle<Sprite[]> obj)
     {
@@ -241,35 +268,12 @@ public class Card : MonoBehaviour
     {
         showCarFace = faceUp;
     }
-    /// <summary>
-    /// Gets the value of the custom draw card amount
-    /// </summary>
-    public int CustomDrawAmount { get; private set; }
 
-    /// <summary>
-    /// Gets the card's value
-    /// </summary>
-    public CardValue Value { get; private set; }
 
-    /// <summary>
-    /// Gets the card's color
-    /// </summary>
-    public CardColor Color { get; private set; }
-
-    /// <summary>
-    /// Gets the color to be played for the wild card
-    /// </summary>
-    public CardColor WildColor { get; private set; }
-
-    /// <summary>
-    /// Gets the message for the cusotom card
-    /// </summary>
-    public string CardMessage { get; private set; }
-
-    public  int CardRandom { get; private set; }
     /// <summary>
     /// Sets the card's value and color as well as sets the sprites
     /// </summary>
+    /// <param name="cardRandom">The random value of the card set by the game engine</param>
     /// <param name="value">The value this card should be</param>
     /// <param name="color">The color this card should be</param>
     public void SetProps(int cardRandom, CardValue value, CardColor color)
@@ -277,6 +281,7 @@ public class Card : MonoBehaviour
         this.CardRandom = cardRandom;
         this.Color = color;
         this.Value = value;
+        Debug.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
         if (this.Color != CardColor.Special)
         {
             spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
@@ -284,28 +289,20 @@ public class Card : MonoBehaviour
             spriteHandleBack.Completed += LoadCardBackSpriteToClass;
             AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
             spriteHandle.Completed += LoadCardFrontSpriteToClass;
+            Debug.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
         }
     }
 
     /// <summary>
-    /// Creates a custom action card
+    /// Sets the card's value and color as well as sets the sprites
     /// </summary>
-    /// <param name="value">The value of the card</param>
-    /// <param name="color">The color of the card</param>
-    /// <param name="action">The action of the custom card</param>
-    /// <param name="customMessage">Add a message to this card.</param>
-    /// <param name="drawNumber">If using <see cref="GameAction.DrawCustom"/> you must specify a number here.</param>
-    public void SetProps(int cardRandom, CardValue value, CardColor color, string customMessage, int drawNumber)
+    /// <param name="cardRandom">The random value of the card set by the game engine</param>
+    /// <param name="value">The value this card should be</param>
+    /// <param name="color">The color this card should be</param>
+    public void SetProps(int cardRandom, CardValue value, string color)
     {
-        this.CardRandom = cardRandom;
-        this.Color = color;
-        this.WildColor = color;
-        this.Value = value;
-        this.CardMessage = customMessage;
-        if (value == CardValue.Custom)
-        {
-            CustomDrawAmount = drawNumber > 0 ? drawNumber : throw new ArgumentOutOfRangeException("If you specify a custom draw card you must also specify a non-zerp number.");
-        }
+        var newColor = (CardColor)Enum.Parse(typeof(CardColor), color);
+        SetProps(cardRandom, value, newColor);
     }
 
     /// <summary>
@@ -316,15 +313,17 @@ public class Card : MonoBehaviour
     {
         if (Color == CardColor.Wild)
         {
+            Debug.Log($"Set wild color value of {this} {CardRandom} to {color}");
             WildColor = color;
         }
     }
 
-    public void SetWildColor(String color)
+    public void SetWildColor(string color)
     {
         if (Color == CardColor.Wild)
         {
-            WildColor = (CardColor)Enum.Parse(typeof(CardColor), color) ;
+            var newColor = (CardColor)Enum.Parse(typeof(CardColor), color);
+            SetWildColor(newColor);
         }
     }
 
@@ -343,6 +342,6 @@ public class Card : MonoBehaviour
     /// <returns></returns>
     public bool CanPlay(Card other)
     {
-        return this.Color.Equals(other.Color) | this.Value.Equals(other.Value) | other.Color.Equals(CardColor.Wild) | this.Color.Equals(CardColor.Wild);
+        return this.Color.Equals(other?.Color) | this.Value.Equals(other?.Value) | this.Color.Equals(Card.CardColor.Wild) | other.Color.Equals(Card.CardColor.Wild);
     }
 }

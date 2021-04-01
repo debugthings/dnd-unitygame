@@ -9,17 +9,17 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 public class ComputerPlayer : LocalPlayer
 {
 
-    
+
     private List<GameObject> dimmableCardList = new List<GameObject>();
     public AssetReference dimmableCardRef;
     void Awake()
     {
-        
+
         InitializePlayer();
     }
 
     // Start is called before the first frame update
-     void Start()
+    void Start()
     {
 
     }
@@ -60,7 +60,7 @@ public class ComputerPlayer : LocalPlayer
 
     }
 
-    public override Card PlayCard(Card card, Card cardToPlayAgainst, bool addToHand)
+    public override Card PlayCard(Card card, Card cardToPlayAgainst, bool addToHand, bool removeCard)
     {
         // For this action we'll check to see if we have any cards to play
         // If we don't we need to return an empty card so we have the correct game action
@@ -78,7 +78,10 @@ public class ComputerPlayer : LocalPlayer
                 cardToRetun = Hand[i];
                 cardToRetun.Unhide();
                 cardToRetun.FlipCardOver();
-                RemoveCard(cardToRetun);
+                if (removeCard)
+                {
+                    RemoveCard(cardToRetun);
+                }
                 return cardToRetun;
             }
         }

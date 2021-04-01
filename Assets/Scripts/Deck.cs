@@ -17,15 +17,6 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     void Awake()
     {
-        // When we create the deck we need to make sure that we can be sure to use the same seed value
-        // This will make the async game handle events the same way.
-        if (RandomSeed == uint.MaxValue)
-        {
-            rand.InitState((uint)UnityEngine.Random.Range(1, 100000));
-        } else
-        {
-            rand.InitState(RandomSeed);
-        }
 
     }
     // Start is called before the first frame update
@@ -39,13 +30,41 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     }
 
+    public void SetRandomSeed(uint seed)
+    {
+        rand.InitState(seed);
+    }
+
     public int Count => deck.Count;
+
+    public bool StackGrowsDown { get; set; } = true;
+
+    public float StackZOrderDirection  => this.StackGrowsDown ? cardStackZOrderOffset : -cardStackZOrderOffset;
     public void AddCardToDeck(T c, bool showCardFace)
     {
-        deck.Push(c);
-        c.SetCardFaceUp(showCardFace);
-        c.transform.SetParent(this.transform);
-        CardPositionJitter(c, Count+1);
+        if (c != Card.Empty)
+        {
+            deck.Push(c);
+            c.SetCardFaceUp(showCardFace);
+            c.transform.SetParent(this.transform);
+            CardPositionJitter(c, Count + 1);
+        }
+    }
+
+    public T FindCardAndTakeIt(int cardRandomId)
+    {
+        var stack = new Stack<Card>();
+        Card c = deck.Pop();
+        while (c.CardRandom != cardRandomId)
+        {
+            stack.Push(c);
+            c = deck.Pop();
+        }
+        foreach (var item in stack)
+        {
+            deck.Push(item as T);
+        }
+        return c as T;
     }
 
     public T FindCardAndTakeIt(Card.CardColor color, Card.CardValue value)
@@ -66,7 +85,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     private void CardPositionJitter(Card card, int count)
     {
         var v3 = this.transform.position;
-        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation), v3.y + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation), (v3.z + MaxStackDepth) - (count + 1) * cardStackZOrderOffset), Quaternion.identity);
+        card.transform.SetPositionAndRotation(new Vector3(v3.x + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation), v3.y + rand.NextFloat(-maxJitterTranslation, maxJitterTranslation), (v3.z + MaxStackDepth) - (count + 1) * StackZOrderDirection), Quaternion.identity);
         card.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
     }
 
@@ -80,19 +99,12 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         return deck.Peek();
     }
 
-    public void AssignRandomId()
-    {
-        var deckCount = (uint)deck.Count;
-        foreach (var card in deck)
-        {
-            card.RandomId = rand.NextUInt(deckCount);
-        }
-    }
     public void Shuffle()
     {
         // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
         var listToShuffle = TakeAllCards().ToArray();
         int lengthOfArray = listToShuffle.Length;
+
         for (int i = 0; i < (lengthOfArray - 1); i++)
         {
             int r = i + rand.NextInt(lengthOfArray - i);
@@ -113,6 +125,22 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         }
     }
 
+    private void SetParentOfAllCards()
+    {
+        foreach (var c in deck)
+        {
+            c.transform.SetParent(this.transform);
+        }
+    }
+
+    private void AllCardsFaceDown()
+    {
+        foreach (var item in deck)
+        {
+            item.SetCardFaceUp(false);
+        }
+    }
+
     public void AddAllCards(IEnumerable<T> cards)
     {
         foreach (var item in cards)
@@ -130,12 +158,13 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     public void SwapCardsFromOtherDeck(Deck<T> otherDeck)
     {
-        if (deck.Count == 0)
-        {
-            var reverseCards = otherDeck.TakeAllCards().Reverse();
-            deck = new Stack<T>(reverseCards);
-            RepositionAllCards();
-        }
+        this.StackGrowsDown = !this.StackGrowsDown;
+        otherDeck.StackGrowsDown = !otherDeck.StackGrowsDown;
+        var reverseCards = otherDeck.TakeAllCards().Reverse();
+        deck = new Stack<T>(reverseCards);
+        SetParentOfAllCards();
+        AllCardsFaceDown();
+        RepositionAllCards();
     }
 
     public IEnumerator<T> GetEnumerator()
@@ -153,6 +182,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     /// </summary>
     public void PutCardBackInDeckInRandomPoisiton(T c, int distanceFromTop, int distanceFromBottom)
     {
+        Debug.Log($"Putting card back in random position.");
         // Since we want to preserve the order of the deck we need to pop the required number of cards off the pile
         var unshift = rand.NextInt(distanceFromTop, distanceFromBottom);
         var cards = new Stack<T>();
