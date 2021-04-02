@@ -730,6 +730,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         {
             case GameAction.Reverse:
                 players.Reverse();
+                if (players.Count == 2)
+                {
+                    Debug.Log($"Two player game skipping {nextPlayer}!");
+                    players.Next();
+                }
                 if (firstPlay)
                 {
                     Debug.Log($"Reverse on draw moving in other direction, sorry {player.Name}, {players.PeekNext().Name} is first!");
