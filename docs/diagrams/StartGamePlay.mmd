@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant h as Host (Game)
+    participant s as Service (Azure)
+    participant g as All Players (Game)
+    h->>h: Create NetworkPlayer references
+    h->>h: Create LocalPlayer reference
+    h->>h: Shuffle Cards
+    h->>h: Deal Cards to LocalPlayer references
+    h->>h: Deal Cards to NetworkPlayer references
+    h->>s: Send hand to Player
+    s->>g: Here is your hand
+    g-->>s: Ack Hand
+    s-->>h: Guest Ack'd Hand
+    h->>s: Send discard card to Guest
+    s->>g: Send discard card to Guest
+    g-->>s: Ack Discard
+    s-->>h: Guest Ack'd Discard
+    h->>s: Notify First Player
+    s->>g: It's your turn
+    g-->>s: Ack
+    s-->>h: Player is Ready
+    loop Wait for First Player
+        h->>s: Ping
+        s-->>h: Ack
+    end
+    loop Wait for Player
+        g->>s: Ping
+        s-->>g: Ack
+    end
