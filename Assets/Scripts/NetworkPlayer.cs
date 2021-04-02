@@ -83,7 +83,7 @@ public class NetworkPlayer : LocalPlayer
 
         // Add the player name and make it parallel to the screen
         var playerName = playerNameObject.GetComponent<TMPro.TMP_Text>();
-        playerName.text = $"{Name} ({Hand.Count})";
+        playerName.text = $"{Name} ({dimmableCardList.Count})";
         playerName.autoSizeTextContainer = true;
         playerName.canvas.transform.Rotate(-playerName.canvas.transform.eulerAngles);
         
@@ -92,15 +92,14 @@ public class NetworkPlayer : LocalPlayer
         Debug.Log($"Fixing up card positions for {this.Name}");
 
         // Add the player name and make it parallel to the screen
-        float cardsStartingPositionBase = (MaxNumberOfCardsInRow - 1) * horizontalSpacing;
+        float cardsStartingPositionBase = Math.Min(dimmableCardList.Count - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;
         int itemNumber = 0;
         float rowNumber = 0;
         float cardNumber = 0.0f;
-        int numberOfCardsInRow = MaxNumberOfCardsInRow;
         foreach (var cardToAdd in dimmableCardList)
         {
-            // There should only be 5 cards in each row
-            if (itemNumber > 0 && itemNumber % numberOfCardsInRow == 0)
+            // There should only be a specific amount of cards in each row
+            if (itemNumber > 0 && itemNumber % MaxNumberOfCardsInRow == 0)
             {
                 itemNumber = 0;
                 rowNumber++;

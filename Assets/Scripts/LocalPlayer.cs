@@ -151,16 +151,14 @@ public class LocalPlayer : MonoBehaviour
             this.transform.localPosition = startingPosition + (shiftUpby * Vector3.up);
         }
 
-        // Add the player name and make it parallel to the screen
-        float cardsStartingPositionBase = (MaxNumberOfCardsInRow - 1) * horizontalSpacing;
+        float cardsStartingPositionBase = Math.Min(Hand.Count - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;
         int itemNumber = 0;
         float rowNumber = 0;
         float cardNumber = 0.0f;
-        int numberOfCardsInRow = MaxNumberOfCardsInRow;
         foreach (var cardToAdd in Hand)
         {
             // There should only be 5 cards in each row
-            if (itemNumber > 0 && itemNumber % numberOfCardsInRow == 0)
+            if (itemNumber > 0 && itemNumber % MaxNumberOfCardsInRow == 0)
             {
                 itemNumber = 0;
                 rowNumber++;
