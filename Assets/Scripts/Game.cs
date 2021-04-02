@@ -566,12 +566,14 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // Some special cases where we don't push the card to the pile since it's a 
         if (cardAction == GameAction.DrawAndPlayOnce || cardAction == GameAction.DrawAndSkip)
         {
+            Debug.Log($"Card action is {cardAction}. Just return and don't add the card to the discard deck.");
             return cardAction;
         }
 
         // If we have a card that will play we need to continue on
         if (dontCheckEquals || card.CanPlay(discardDeck.PeekTopCard()))
         {
+            Debug.Log($"Card action is {cardAction}. Add the card to the discard deck.");
             // Take the card that is in play and put it on top.
             discardDeck.AddCardToDeck(card, true);
             return cardAction;
@@ -762,6 +764,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 {
                     nextPlayer.AddCard(TakeFromDealPile());
                 }
+                Debug.Log($"Skipping {nextPlayer.Name}!");
+                players.Next();
                 break;
             case GameAction.DrawFour:
                 Debug.Log($"{nextPlayer.Name} must Draw Four!");
@@ -769,6 +773,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 {
                     nextPlayer.AddCard(TakeFromDealPile());
                 }
+                Debug.Log($"Skipping {nextPlayer.Name}!");
+                players.Next();
                 break;
             case GameAction.DrawAndSkip:
                 Debug.Log($"{player.Name} chose DrawAndSkip!");
