@@ -216,6 +216,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         // Player next to the master player
         Player nextToDealer = default;
+        Player dealer = default;
 
         // For each player in the player list find the one that is next to the dealer.
         foreach (var item in PhotonNetwork.PlayerList)
@@ -227,9 +228,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-
-
-        // Set the circular list to the correct player grouping.
+        // Set the circular list to the correct player grouping for dealer
         players.SetPlayer(networkPlayersList[nextToDealer]);
 
         // Deal out the players 
@@ -255,11 +254,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         Debug.Log("Play top card");
         PutCardOnDiscardPile(TakeFromDealPile(), true, true);
+        
         // There are a couple of rules on the first play
         // If it's a wild the first player chooses the color.
         // If it's a wild draw four the card goes back into the pile.
-
-
+        // We will pretend this card is dealt by the dealer so gameplay will behave as expected.
+        players.SetPlayer(networkPlayersList[dealer]);
         FirstPlay(players.Current());
 
         Debug.Log("Leaving Start()");
@@ -305,7 +305,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void FirstPlay(LocalPlayer player)
     {
-        var firstCard = dealDeck.PeekTopCard();
+        var firstCard = discardDeck.PeekTopCard();
         switch (firstCard.Value)
         {
             case Card.CardValue.Skip:
@@ -629,7 +629,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
                 Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
                 cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
-                GameLoop(cardToPlay, playerSending, true);
+                GameLoop(cardToPlay, playerSending);
 
                 // If the player has taken the last card the the discard deck is swapped
                 // we will need to check and pull a new card.
@@ -649,7 +649,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     /// <param name="c"></param>
     /// <param name="player"></param>
-    public void GameLoop(Card c, LocalPlayer player, bool calledRemotely = false)
+    public void GameLoop(Card c, LocalPlayer player, bool firstPlay = false)
     {
 
         if (c != Card.Empty && player == players.Current() && !stopGame)
@@ -670,7 +670,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         else
         {
-
             // Un dim the computer player so it gives us an indication that they are playing
             var nextPlayer = players.Next();
             foreach (var item in players)
@@ -720,8 +719,17 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var nextPlayer = firstPlay ? players.Current() : players.PeekNext();
         // If it is not a player's turn we should just skip
 
-        // Take the player's card and put it on the discard pile. 
-        GameAction ga = PutCardOnDiscardPile(c, false, false);
+        // Take the player's card and put it on the discard pile.
+        GameAction ga;
+        if (firstPlay)
+        {
+            ga = ConvertCardToAction(c);
+        }
+        else
+        {
+            ga = PutCardOnDiscardPile(c, false, false);
+        }
+
         Debug.Log($"Card {c} is in the Discard Pile");
         if (c.Color == Card.CardColor.Wild)
         {
