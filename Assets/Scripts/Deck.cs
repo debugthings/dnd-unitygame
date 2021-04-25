@@ -182,7 +182,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     /// </summary>
     public void PutCardBackInDeckInRandomPoisiton(T c, int distanceFromTop, int distanceFromBottom)
     {
-        Debug.Log($"Putting card back in random position.");
+        Debug.Log($"Putting card {c} back in random position.");
         // Since we want to preserve the order of the deck we need to pop the required number of cards off the pile
         var unshift = rand.NextInt(distanceFromTop, distanceFromBottom);
         var cards = new Stack<T>();

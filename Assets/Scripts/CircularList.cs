@@ -7,7 +7,7 @@ using System.Text;
 /// A circular list implementation that will automatically cycle around to the next position in the list without going over.
 /// </summary>
 /// <typeparam name="T">The type to store in the list.</typeparam>
-public class CircularList<T> : List<T>
+public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
 {
     private int position = 0;
     private bool _moveForward = true;
@@ -121,5 +121,17 @@ public class CircularList<T> : List<T>
     public T Current()
     {
         return this[position];
+    }
+
+    public T FindPlayerByNetworkPlayer(K networkPlayer)
+    {
+        foreach (var item in this)
+        {
+            if (item.NetworkPlayer.Equals(networkPlayer))
+            {
+                return item;
+            }
+        }
+        return null;
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Photon.Realtime;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -78,15 +79,27 @@ public class NetworkPlayer : LocalPlayer
 
     protected override void FixupCardPositions()
     {
+        FixupCardPositions(false);
+    }
+
+    private void FixupCardPositions(bool hasLeft)
+    {
         // We should only fixup the positions when a card is added or 
         Debug.Log($"Fixing up card positions for {this.Name}");
 
         // Add the player name and make it parallel to the screen
         var playerName = playerNameObject.GetComponent<TMPro.TMP_Text>();
-        playerName.text = $"{Name} ({dimmableCardList.Count})";
+        if (hasLeft)
+        {
+            playerName.text = $"{Name} (LEFT GAME)";
+        }
+        else
+        {
+            playerName.text = $"{Name} ({dimmableCardList.Count})";
+        }
         playerName.autoSizeTextContainer = true;
         playerName.canvas.transform.Rotate(-playerName.canvas.transform.eulerAngles);
-        
+
 
         // We should only fixup the positions when a card is added or 
         Debug.Log($"Fixing up card positions for {this.Name}");
@@ -139,5 +152,9 @@ public class NetworkPlayer : LocalPlayer
         }
     }
 
+    public override void PlayerLeftGame()
+    {
+        FixupCardPositions(true);
+    }
 
 }

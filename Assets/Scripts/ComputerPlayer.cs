@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class ComputerPlayer : LocalPlayer
+public class ComputerPlayer : LocalPlayerBase<object>
 {
 
 
@@ -127,5 +127,9 @@ public class ComputerPlayer : LocalPlayer
                 cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
             }
         }
+    }
+
+    public override void PlayerLeftGame()
+    {
     }
 }
