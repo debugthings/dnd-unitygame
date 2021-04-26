@@ -18,7 +18,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private const float cardStackZOrderOffset = 0.01f;
 
-    private CircularList<LocalPlayer> players = new CircularList<LocalPlayer>();
+    private CircularList<LocalPlayerBase<Player>, Player> players = new CircularList<LocalPlayerBase<Player>, Player>();
 
     private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
     private Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
@@ -52,7 +52,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AssetReference wildCardSelect;
 
 
-    public LocalPlayer CurrentPlayer => players.Current();
+    public LocalPlayer CurrentPlayer => (LocalPlayer)players.Current();
 
     /// <summary>
     /// Gets the singular local player
@@ -63,6 +63,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private bool gameStarted = false;
 
+    private static SemaphoreSlim _gamelock = new SemaphoreSlim(0);
+
     // Start is called before the first frame update
     async void Start()
     {
@@ -70,6 +72,49 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         if (PhotonNetwork.IsConnectedAndReady)
         {
             await StartGame();
+        }
+
+    }
+
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        try
+        {
+            var playerWhoLeft = players.FindPlayerByNetworkPlayer(otherPlayer);
+            var tempList = new List<Card>();
+            for (int i = 0; i < playerWhoLeft.Hand.Count; i++)
+            {
+                tempList.Add(playerWhoLeft.Hand[i]);
+            }
+
+            foreach (var item in tempList)
+            {
+                var c = playerWhoLeft.PlayCard(item, item, false);
+                dealDeck.PutCardBackInDeckInRandomPoisiton(c, 0, Math.Max(0, dealDeck.Count - 1));
+            }
+
+            players.Remove(playerWhoLeft);
+            playerWhoLeft.PlayerLeftGame();
+            Debug.Log($"Player {otherPlayer.NickName} has left the game");
+
+            // If there is only one person left in the game, they win
+            if (players.Count == 1)
+            {
+                var player = players.FirstOrDefault();
+                ShowWin(player);
+            }
+            else
+            {
+                AdvanceNextPlayer();
+            }
+            base.OnPlayerLeftRoom(otherPlayer);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(ex.ToString());
+        }
+        finally
+        {
         }
 
     }
@@ -108,7 +153,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         base.OnJoinRoomFailed(returnCode, message);
     }
-
 
     private async Task StartGame()
     {
@@ -188,7 +232,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
                 CreateCardOnDealDeck(rand.NextInt(), cardColorArray[colorIndex], Card.CardValue.Zero);
-
             }
         }
 
@@ -227,10 +270,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-
-
         // Set the circular list to the correct player grouping.
-        players.SetPlayer(networkPlayersList[nextToDealer]);
+        players.SetPlayer(players.FindPlayerByNetworkPlayer(nextToDealer));
 
         // Deal out the players 
         for (int i = 0; i < gameOptions.NumberOfCardsToDeal; i++)
@@ -258,7 +299,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // There are a couple of rules on the first play
         // If it's a wild the first player chooses the color.
         // If it's a wild draw four the card goes back into the pile.
-
 
         FirstPlay(players.Current());
 
@@ -303,7 +343,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     }
 
-    private void FirstPlay(LocalPlayer player)
+    private void FirstPlay(LocalPlayerBase<Player> player)
     {
         var firstCard = dealDeck.PeekTopCard();
         switch (firstCard.Value)
@@ -406,7 +446,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         };
     }
 
-
     private void BuildGamePlayers()
     {
         // For the game we need the local player to be the 6 o'clock position on the table
@@ -443,6 +482,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             var maxNumberOfCards = numOfPlayers >= 6 ? 8 : 10;
 
             Debug.Log($"Creating player {player.Value.NickName} with actor number {player.Value.ActorNumber}");
+
+            var photonPlayer = player.Value;
             if (player.Value != PhotonNetwork.LocalPlayer)
             {
                 var ply = PlaceInCircle<NetworkPlayer>(transform, computerPlayerPrefab, position, numOfPlayers, minorAxis, majorAxis);
@@ -452,7 +493,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 ply.DimmableCardObject = dimmableCardPrefab;
                 ply.MaxNumberOfCardsInRow = maxNumberOfCards;
                 ply.transform.localScale = 0.5f * Vector3.one;
-                networkPlayersList.Add(player.Value, ply);
+                ply.SetNetworkPlayerObject(photonPlayer);
                 players.Add(ply);
             }
             else
@@ -463,7 +504,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 ply.CurrentGame = this;
                 ply.SetName(player.Value.NickName);
                 LocalPlayer = ply;
-                networkPlayersList.Add(player.Value, ply);
+                ply.SetNetworkPlayerObject(photonPlayer);
                 players.Add(ply);
             }
         }
@@ -581,67 +622,83 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         return GameAction.NextPlayer;
     }
 
+    /// <summary>
+    /// When a network player updates the room properties we will play the game as expected
+    /// </summary>
+    /// <param name="propertiesThatChanged">A list of properties from Photon</param>
     public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
     {
-        var cardStringCheck = propertiesThatChanged?[Constants.CardToPlay] ?? "NULL";
-        var cardColorCheck = propertiesThatChanged?[Constants.CardColor] ?? "NULL";
-        var cardWildColorCheck = propertiesThatChanged?[Constants.CardWildColor] ?? "NULL";
-        var cardValueCheck = propertiesThatChanged?[Constants.CardValue] ?? "NULL";
-        var updateGuid = propertiesThatChanged?[Constants.UpdateGuid] ?? "NULL";
-
-        Debug.Log("");
-        Debug.Log($"Room properties updated at {DateTime.Now}");
-        Debug.Log($"Room properties update guid {updateGuid}");
-        Debug.Log($"cardString = {cardStringCheck}\tcardColor = {cardColorCheck}\tcardWildColor = {cardWildColorCheck}\tcardValue = {cardValueCheck}");
-
-        if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
+        try
         {
-            var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
-            if (playerSending != null)
-            {
-                var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
-                string cardColor = (string)propertiesThatChanged?[Constants.CardColor];
-                string cardWildColor = (string)propertiesThatChanged?[Constants.CardWildColor];
-                string cardValue = (string)propertiesThatChanged?[Constants.CardValue];
-                Debug.Log($"Found player {playerSending.Name}");
-                var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay]);
+            var cardStringCheck = propertiesThatChanged?[Constants.CardToPlay] ?? "NULL";
+            var cardColorCheck = propertiesThatChanged?[Constants.CardColor] ?? "NULL";
+            var cardWildColorCheck = propertiesThatChanged?[Constants.CardWildColor] ?? "NULL";
+            var cardValueCheck = propertiesThatChanged?[Constants.CardValue] ?? "NULL";
+            var updateGuid = propertiesThatChanged?[Constants.UpdateGuid] ?? "NULL";
 
-                if (cardToPlay == null)
+            Debug.Log("");
+            Debug.Log($"Room properties updated at {DateTime.Now}");
+            Debug.Log($"Room properties update guid {updateGuid}");
+            Debug.Log($"cardString = {cardStringCheck}\tcardColor = {cardColorCheck}\tcardWildColor = {cardWildColorCheck}\tcardValue = {cardValueCheck}");
+
+            if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
+            {
+                var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
+                if (playerSending != null)
                 {
-                    Debug.Log($"Card was NOT found in player's hand");
-                    // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
-                    if (dealDeck.PeekTopCard().CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay])
+                    var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
+                    string cardColor = (string)propertiesThatChanged?[Constants.CardColor];
+                    string cardWildColor = (string)propertiesThatChanged?[Constants.CardWildColor];
+                    string cardValue = (string)propertiesThatChanged?[Constants.CardValue];
+                    Debug.Log($"Found player {playerSending.Name}");
+                    var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay]);
+
+                    if (cardToPlay == null)
                     {
-                        cardToPlay = TakeFromDealPile();
-                        Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
-                        playerSending.AddCard(cardToPlay);
+                        Debug.Log($"Card was NOT found in player's hand");
+                        // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
+                        if (dealDeck.PeekTopCard().CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay])
+                        {
+                            cardToPlay = TakeFromDealPile();
+                            Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
+                            playerSending.AddCard(cardToPlay);
+                        }
+
+                        //TODO In the evnt this client is out of sync we need to resync
                     }
 
-                    //TODO In the evnt this client is out of sync we need to resync
-                }
+                    if (cardToPlay.Color == Card.CardColor.Wild)
+                    {
+                        // When we're here we need to make sure we honor the player's wild color choice
+                        Debug.Log($"Set {cardToPlay} to wild color {cardWildColor}");
+                        cardToPlay.SetWildColor(cardWildColor);
+                    }
 
-                if (cardToPlay.Color == Card.CardColor.Wild)
-                {
-                    // When we're here we need to make sure we honor the player's wild color choice
-                    Debug.Log($"Set {cardToPlay} to wild color {cardWildColor}");
-                    cardToPlay.SetWildColor(cardWildColor);
-                }
+                    Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+                    cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
+                    GameLoop(cardToPlay, playerSending, true);
 
-                Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
-                cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
-                GameLoop(cardToPlay, playerSending, true);
-
-                // If the player has taken the last card the the discard deck is swapped
-                // we will need to check and pull a new card.
-                if (dealDeck.Count == 0)
-                {
-                    Debug.Log($"Discard deck is empty.");
-                    discardDeck.AddCardToDeck(TakeFromDealPile(), true);
+                    // If the player has taken the last card the the discard deck is swapped
+                    // we will need to check and pull a new card.
+                    if (dealDeck.Count == 0)
+                    {
+                        Debug.Log($"Discard deck is empty.");
+                        discardDeck.AddCardToDeck(TakeFromDealPile(), true);
+                    }
                 }
             }
+            Debug.Log("");
+            base.OnRoomPropertiesUpdate(propertiesThatChanged);
         }
-        Debug.Log("");
-        base.OnRoomPropertiesUpdate(propertiesThatChanged);
+        catch (Exception ex)
+        {
+            Debug.LogError(ex);
+            throw;
+        }
+        finally
+        {
+        }
+
     }
 
     /// <summary>
@@ -649,7 +706,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     /// <param name="c"></param>
     /// <param name="player"></param>
-    public void GameLoop(Card c, LocalPlayer player, bool calledRemotely = false)
+    public void GameLoop(Card c, LocalPlayerBase<Player> player, bool calledRemotely = false)
     {
 
         if (c != Card.Empty && player == players.Current() && !stopGame)
@@ -658,39 +715,48 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             PerformGameAction(c, false);
         }
 
-        if (player.CheckWin())
+        if (player.CheckWin(players.Count))
         {
-            var textMeshProObjects = winnerBannerPrefab.GetComponentsInChildren<TextMeshPro>();
-            foreach (var item in textMeshProObjects)
-            {
-                item.text = $"{player.name} WINS!";
-            }
-            Instantiate(winnerBannerPrefab, transform);
-            stopGame = true;
+            ShowWin(player);
         }
         else
         {
-
-            // Un dim the computer player so it gives us an indication that they are playing
-            var nextPlayer = players.Next();
-            foreach (var item in players)
-            {
-                if (item != players.Current())
-                {
-                    item.DimCards(true);
-                }
-                else
-                {
-                    item.DimCards(false);
-                }
-            }
-
-            if (nextPlayer is NetworkPlayer)
-            {
-                // This ends the loop for this play and will wait for the network player to make a move
-            }
+            AdvanceNextPlayer();
 
         }
+    }
+
+    private void AdvanceNextPlayer()
+    {
+        // Un dim the computer player so it gives us an indication that they are playing
+        var nextPlayer = players.Next();
+        foreach (var item in players)
+        {
+            if (item != players.Current())
+            {
+                item.DimCards(true);
+            }
+            else
+            {
+                item.DimCards(false);
+            }
+        }
+
+        if (nextPlayer is NetworkPlayer)
+        {
+            // This ends the loop for this play and will wait for the network player to make a move
+        }
+    }
+
+    private void ShowWin(LocalPlayerBase<Player> player)
+    {
+        var textMeshProObjects = winnerBannerPrefab.GetComponentsInChildren<TextMeshPro>();
+        foreach (var item in textMeshProObjects)
+        {
+            item.text = $"{player.name} WINS!";
+        }
+        Instantiate(winnerBannerPrefab, transform);
+        stopGame = true;
     }
 
     private static void UpdateRoomProperties(Card c, LocalPlayer player)
