@@ -63,8 +63,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private bool gameStarted = false;
 
-    private static SemaphoreSlim _gamelock = new SemaphoreSlim(0);
-
     // Start is called before the first frame update
     async void Start()
     {
