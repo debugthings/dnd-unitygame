@@ -145,6 +145,10 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// </summary>
     protected virtual void FixupCardPositions()
     {
+        var cardsToDisplay = Hand.ToArray();
+        int numberOfCardsInHand = cardsToDisplay.Length;
+        Array.Sort(cardsToDisplay);
+
         // We should only fixup the positions when a card is added or 
         Debug.Log($"Fixing up card positions for {this.Name}");
 
@@ -153,17 +157,18 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
             this.startingPosition = this.transform.localPosition;
         }
         // If we're showing multiple rows we need to shift up by some number
-        if (Hand.Count > MaxNumberOfCardsInRow)
+        if (numberOfCardsInHand > MaxNumberOfCardsInRow)
         {
-            var shiftUpby = ((Hand.Count - (Hand.Count % MaxNumberOfCardsInRow)) / MaxNumberOfCardsInRow) * .8f;
+            var shiftUpby = ((numberOfCardsInHand - (numberOfCardsInHand % MaxNumberOfCardsInRow)) / MaxNumberOfCardsInRow) * .8f;
             this.transform.localPosition = startingPosition + (shiftUpby * Vector3.up);
         }
 
-        float cardsStartingPositionBase = Math.Min(Hand.Count - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;
+        float cardsStartingPositionBase = Math.Min(numberOfCardsInHand - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;
+
         int itemNumber = 0;
         float rowNumber = 0;
         float cardNumber = 0.0f;
-        foreach (var cardToAdd in Hand)
+        foreach (var cardToAdd in cardsToDisplay)
         {
             // There should only be 5 cards in each row
             if (itemNumber > 0 && itemNumber % MaxNumberOfCardsInRow == 0)
