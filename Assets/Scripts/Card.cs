@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class Card : MonoBehaviour
+public class Card : MonoBehaviour, IComparable<Card>
 {
     private SpriteRenderer spriteRenderer;
     private const string spriteRoot = "Assets/Card Sprites/Uno_";
@@ -343,5 +343,21 @@ public class Card : MonoBehaviour
     public bool CanPlay(Card other)
     {
         return this.Color.Equals(other?.Color) | this.Value.Equals(other?.Value) | this.Color.Equals(Card.CardColor.Wild) | other.Color.Equals(Card.CardColor.Wild);
+    }
+
+    /// <summary>
+    /// Compare the color and card value to determine hand order.
+    /// </summary>
+    /// <param name="other">The card to compare against</param>
+    /// <returns></returns>
+    public int CompareTo(Card other)
+    {
+        int comparedValue = Value - other.Value;
+        int comparedColor = Color - other.Color;
+        if (comparedColor != 0)
+        {
+            return comparedColor;
+        }
+        return comparedValue;
     }
 }
