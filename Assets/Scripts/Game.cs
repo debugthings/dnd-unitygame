@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using TMPro;
 using System.Threading.Tasks;
 using System.Threading;
@@ -11,6 +10,7 @@ using Photon.Realtime;
 using Photon.Pun;
 using ExitGames.Client.Photon;
 using Assets.Scripts;
+using UnityEngine.UI;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
@@ -30,6 +30,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private int numberOfDecks = 1;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private IDictionary<Player, LocalPlayer> networkPlayersList = new Dictionary<Player, LocalPlayer>();
+    private IDictionary<Player, int> playerScore = new Dictionary<Player, int>();
 
 
     private GameObject cardPrefab;
@@ -42,6 +43,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     public CardDeck dealDeck;
     public CardDeck discardDeck;
+
+    public Toggle playerToggle;
 
     // These are objects that are created on the fly so we want to load the asset from the asset store
     public AssetReference playerReference;
@@ -68,6 +71,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     // Start is called before the first frame update
     async void Start()
     {
+        playerToggle.onValueChanged.AddListener(delegate
+        {
+            TogglePlayableDimming();
+        });
+
         // TODO Initialize a please wait here.
         if (PhotonNetwork.IsConnectedAndReady)
         {
@@ -293,16 +301,30 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-
         Debug.Log("Play top card");
         PutCardOnDiscardPile(TakeFromDealPile(), true, true);
         // There are a couple of rules on the first play
         // If it's a wild the first player chooses the color.
         // If it's a wild draw four the card goes back into the pile.
 
+        TogglePlayableDimming();
+
         FirstPlay(players.Current());
 
         Debug.Log("Leaving Start()");
+    }
+
+    private void TogglePlayableDimming()
+    {
+        if (players.Current() == LocalPlayer)
+        {
+            LocalPlayer.ItsYourTurn(true);
+            LocalPlayer.DimCardsThatCantBePlayed(playerToggle.isOn, discardDeck.PeekTopCard());
+        }
+        else
+        {
+            LocalPlayer.ItsYourTurn(false);
+        }
     }
 
     private void CreateCardOnDealDeck(int randomValue, Card.CardColor cardColor, Card.CardValue cardValue)
@@ -692,7 +714,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex);
             throw;
         }
         finally
@@ -724,6 +745,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             AdvanceNextPlayer();
 
         }
+
+
     }
 
     private void AdvanceNextPlayer()
@@ -742,6 +765,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
+        // Always honor the card dimming when a player 
+        TogglePlayableDimming();
+
         if (nextPlayer is NetworkPlayer)
         {
             // This ends the loop for this play and will wait for the network player to make a move
@@ -750,11 +776,70 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void ShowWin(LocalPlayerBase<Player> player)
     {
-        var textMeshProObjects = winnerBannerPrefab.GetComponentsInChildren<TextMeshPro>();
-        foreach (var item in textMeshProObjects)
+
+        int score = 0;
+        foreach (var item in players)
         {
-            item.text = $"{player.name} WINS!";
+            if (!playerScore.ContainsKey(item.Player))
+            {
+                playerScore[item.Player] = 0;
+            }
+
+            if (item != player)
+            {
+                score += item.ScoreHand();
+            }
         }
+
+        playerScore[player.Player] += score;
+
+        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.NickName, Score = scores.Value };
+
+        var allTextMesh = winnerBannerPrefab.GetComponentsInChildren<TextMeshProUGUI>(true);
+        TextMeshProUGUI winnerBanner = null;
+        TextMeshProUGUI playerNameScoreCard = null;
+        TextMeshProUGUI dotsScoreCard = null;
+        TextMeshProUGUI playerScoreScoreCard = null;
+
+        foreach (var item in allTextMesh)
+        {
+            switch (item.name)
+            {
+                case "WinnerBanner":
+                    winnerBanner = item;
+                    break;
+                case "PlayerNames":
+                    playerNameScoreCard = item;
+                    break;
+                case "DOTS":
+                    dotsScoreCard = item;
+                    break;
+                case "PlayerScores":
+                    playerScoreScoreCard = item;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+
+        winnerBanner.text = $"{player.name} WINS!";
+
+        var playerNameBuffer = string.Empty;
+        var playerScoreBuffer = string.Empty;
+        var dotsBuffer = string.Empty;
+        foreach (var item in orderedScore)
+        {
+            playerNameBuffer += $"{item.Name}\n";
+            dotsBuffer += ".........\n";
+            playerScoreBuffer += $"{item.Score}\n";
+        }
+
+        playerNameScoreCard.text = playerNameBuffer;
+        dotsScoreCard.text = dotsBuffer;
+        playerScoreScoreCard.text = playerScoreBuffer;
+
+
         Instantiate(winnerBannerPrefab, transform);
         stopGame = true;
     }
