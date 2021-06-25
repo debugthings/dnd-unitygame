@@ -112,15 +112,18 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             playerWhoLeft.PlayerLeftGame();
             Debug.Log($"Player {otherPlayer.NickName} has left the game");
 
-            // If there is only one person left in the game, they win
-            if (players.Count == 1)
+            if (!stopGame)
             {
-                var player = players.FirstOrDefault();
-                ShowWin(player);
-            }
-            else
-            {
-                AdvanceNextPlayer();
+                // If there is only one person left in the game, they win
+                if (players.Count == 1)
+                {
+                    var player = players.FirstOrDefault();
+                    ShowWin(player);
+                }
+                else
+                {
+                    AdvanceNextPlayer();
+                }
             }
             base.OnPlayerLeftRoom(otherPlayer);
         }
