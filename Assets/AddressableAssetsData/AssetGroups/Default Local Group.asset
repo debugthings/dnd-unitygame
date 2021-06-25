@@ -405,14 +405,18 @@ MonoBehaviour:
     m_Address: Assets/Prefabs/Card.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
+    m_MainAsset: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
+      type: 3}
+    m_TargetAsset: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
+      type: 3}
   - m_GUID: 4842de842a194d546ae88b66fecf0d1e
     m_Address: Assets/Prefabs/ComputerPlayer.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
+    m_MainAsset: {fileID: 8240977832005720467, guid: 4842de842a194d546ae88b66fecf0d1e,
+      type: 3}
+    m_TargetAsset: {fileID: 8240977832005720467, guid: 4842de842a194d546ae88b66fecf0d1e,
+      type: 3}
   - m_GUID: 3e884209bccab0e4db14d71c5e463eb3
     m_Address: Assets/Prefabs/Player.prefab
     m_ReadOnly: 0
@@ -437,6 +441,114 @@ MonoBehaviour:
     m_SerializedLabels: []
     m_MainAsset: {fileID: 0}
     m_TargetAsset: {fileID: 0}
+  - m_GUID: 19f89c6e740e7447f9e12a8310d3e973
+    m_Address: boop
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 19f89c6e740e7447f9e12a8310d3e973, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 19f89c6e740e7447f9e12a8310d3e973, type: 3}
+  - m_GUID: 79180f511d89441b9aa23ccae1992fe0
+    m_Address: card_chime
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 79180f511d89441b9aa23ccae1992fe0, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 79180f511d89441b9aa23ccae1992fe0, type: 3}
+  - m_GUID: ffb159a21c8a04135a5616979c828fab
+    m_Address: click
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: ffb159a21c8a04135a5616979c828fab, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: ffb159a21c8a04135a5616979c828fab, type: 3}
+  - m_GUID: dc6614beca09347ec9b258f12d154bdd
+    m_Address: error_chord_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: dc6614beca09347ec9b258f12d154bdd, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: dc6614beca09347ec9b258f12d154bdd, type: 3}
+  - m_GUID: 72127805eb2bc4e7fbf2e02eca266cfa
+    m_Address: error_chord_2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 72127805eb2bc4e7fbf2e02eca266cfa, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 72127805eb2bc4e7fbf2e02eca266cfa, type: 3}
+  - m_GUID: 52320e590bf774734a288886eba557ba
+    m_Address: game_start
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
+  - m_GUID: 32d4b1811dda14a6cb9e059ee8ad17d2
+    m_Address: light_click
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 32d4b1811dda14a6cb9e059ee8ad17d2, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 32d4b1811dda14a6cb9e059ee8ad17d2, type: 3}
+  - m_GUID: fe0b1f9aeb45b41b089175aeeabd5d95
+    m_Address: play_card_1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
+  - m_GUID: 3becec1909f194046945d85ac1077772
+    m_Address: play_card_2
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 3becec1909f194046945d85ac1077772, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 3becec1909f194046945d85ac1077772, type: 3}
+  - m_GUID: 81652031b64c342cc8dbc59c138d77c5
+    m_Address: play_card_3
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 81652031b64c342cc8dbc59c138d77c5, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 81652031b64c342cc8dbc59c138d77c5, type: 3}
+  - m_GUID: 6e8772b49f34d402a90016ed445d8a2f
+    m_Address: play_card_4
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 6e8772b49f34d402a90016ed445d8a2f, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 6e8772b49f34d402a90016ed445d8a2f, type: 3}
+  - m_GUID: d46323e22e74e46baa241cbf48c85671
+    m_Address: play_card_5
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: d46323e22e74e46baa241cbf48c85671, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: d46323e22e74e46baa241cbf48c85671, type: 3}
+  - m_GUID: 79e6baad2fd414b82a6d49ce1568d2e5
+    m_Address: player_exit
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 79e6baad2fd414b82a6d49ce1568d2e5, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 79e6baad2fd414b82a6d49ce1568d2e5, type: 3}
+  - m_GUID: 29bde6326b4c34ad8a12da475f79b50a
+    m_Address: player_join
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 29bde6326b4c34ad8a12da475f79b50a, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 29bde6326b4c34ad8a12da475f79b50a, type: 3}
+  - m_GUID: 0c008ee3ee72a4362a35be25fa5de043
+    m_Address: player_turn
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
+  - m_GUID: 2667a0a008b044e218b63df62e2be749
+    m_Address: player_win
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
+  - m_GUID: 7bd6b897eb5ca4b7d88a205c4a51640c
+    m_Address: player_win
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
+  - m_GUID: 7478151cf36724a7dada558f746c3633
+    m_Address: player_tada
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    m_MainAsset: {fileID: 8300000, guid: 7478151cf36724a7dada558f746c3633, type: 3}
+    m_TargetAsset: {fileID: 8300000, guid: 7478151cf36724a7dada558f746c3633, type: 3}
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: ab0f2e2408961824e914f4504ec0c942, type: 2}
   m_SchemaSet:

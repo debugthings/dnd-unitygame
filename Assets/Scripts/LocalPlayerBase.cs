@@ -249,4 +249,43 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     }
 
     public abstract void PlayerLeftGame();
+
+    public int ScoreHand()
+    {
+        int score = 0;
+        foreach (var item in Hand)
+        {
+            if ((int)item.Value <= 9)
+            {
+                score += (int)item.Value;
+            }
+            else
+            {
+                switch (item.Value)
+                {
+                    case Card.CardValue.DrawTwo:
+                    case Card.CardValue.Skip:
+                    case Card.CardValue.Reverse:
+                        score += 20;
+                        break;
+                    case Card.CardValue.Wild:
+                    case Card.CardValue.DrawFour:
+                        score += 40;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        return score;
+    }
+
+    public virtual void ClearHand()
+    {
+        foreach (var item in Hand)
+        {
+            Destroy(item.gameObject);
+        }
+        Hand.Clear();
+    }
 }
