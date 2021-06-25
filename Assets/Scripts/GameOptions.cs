@@ -36,7 +36,7 @@ namespace Assets.Scripts
         /// How many cards to deal for the initial hand.
         /// </summary>
         /// <value>Default is 5</value>
-        public int NumberOfCardsToDeal { get; set; } = 5;
+        public int NumberOfCardsToDeal { get; set; } = 2;
 
         /// <summary>
         /// How many players per deck.

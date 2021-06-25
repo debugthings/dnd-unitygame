@@ -16,6 +16,6 @@ namespace Assets.Scripts
         public static string CardValue => "cardValue";
         public static string UpdateGuid => "updateGuid";
         public static string GameStarted => "gameStarted";
-
+        public static string RestartGameAfterWin => "RestartGameAfterWin";
     }
 }

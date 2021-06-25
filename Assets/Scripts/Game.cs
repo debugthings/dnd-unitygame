@@ -11,25 +11,24 @@ using Photon.Pun;
 using ExitGames.Client.Photon;
 using Assets.Scripts;
 using UnityEngine.UI;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
-    private readonly LoadBalancingClient client = new LoadBalancingClient();
-
     private const float cardStackZOrderOffset = 0.01f;
 
     private CircularList<LocalPlayerBase<Player>, Player> players = new CircularList<LocalPlayerBase<Player>, Player>();
 
     private List<Card.CardValue> cardValuesArray = new List<Card.CardValue>((Card.CardValue[])Enum.GetValues(typeof(Card.CardValue)));
     private Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
-    private Card.CardValue[] specials = new Card.CardValue[] { Card.CardValue.DrawFour };
+
+    private List<AudioClip> cardPlaySounds = new List<AudioClip>();
 
     private GameOptions gameOptions;
 
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
-    private IDictionary<Player, LocalPlayer> networkPlayersList = new Dictionary<Player, LocalPlayer>();
     private IDictionary<Player, int> playerScore = new Dictionary<Player, int>();
 
 
@@ -39,6 +38,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private GameObject computerPlayerPrefab;
     private GameObject winnerBannerPrefab;
     private GameObject wildCardSelectPrefab;
+    private GameObject winnerBannerPrefabToDestroy;
 
 
     public CardDeck dealDeck;
@@ -53,6 +53,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AssetReference dimmableCardReference;
     public AssetReference winnerBanner;
     public AssetReference wildCardSelect;
+    public AudioSource audioSource;
+    public AudioClip playerWin;
+    public AudioClip playerTurn;
+    public AudioClip wildCardPopup;
+
+
 
 
     public LocalPlayer CurrentPlayer => (LocalPlayer)players.Current();
@@ -79,7 +85,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // TODO Initialize a please wait here.
         if (PhotonNetwork.IsConnectedAndReady)
         {
-            await StartGame();
+            await InitializeAssetsAndPlayers();
+            StartGame();
         }
 
     }
@@ -131,7 +138,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         if (!gameStarted)
         {
-            await StartGame();
+            await InitializeAssetsAndPlayers();
+            StartGame();
         }
 
         base.OnJoinedRoom();
@@ -162,39 +170,20 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         base.OnJoinRoomFailed(returnCode, message);
     }
 
-    private async Task StartGame()
+    private void ResetDecks()
+    {
+        dealDeck.ClearDeck();
+        discardDeck.ClearDeck();
+        foreach (var item in players)
+        {
+            item.ClearHand();
+        }
+    }
+
+    private void StartGame()
     {
         gameStarted = true;
-        Debug.Log("Entered Start()");
-        if (PhotonNetwork.CurrentRoom.CustomProperties != null)
-        {
-            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(Constants.SeedKeyName, out var value);
-            Debug.Log($"Seed value {value}");
-            uint roomSeed = Convert.ToUInt32(value);
-            rand.InitState(roomSeed);
-            dealDeck.SetRandomSeed(roomSeed);
-            dealDeck.StackGrowsDown = false;
-            discardDeck.SetRandomSeed(roomSeed);
-            discardDeck.StackGrowsDown = true;
-        }
-        else
-        {
-            rand.InitState();
-        }
-
-        gameOptions = gameOptions ?? new GameOptions();
-
-        await LoadAllPrefabs();
-
-        if (gameOptions.HumanPlayers < 1)
-        {
-            throw new ArgumentOutOfRangeException("You must have 1 or more human players for this game!");
-        }
-
-        numOfPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
-
-        Debug.Log("Build players");
-        BuildGamePlayers();
+        stopGame = false;
 
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
@@ -210,12 +199,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         // Remove cards so we can just use the loops below
         FixupCardsPerColor();
-
-        int totalNumberCards = (numberOfDecks * 2) * cardColorArray.Length * cardValuesArray.Count;
-        int totalZeroCards = (numberOfDecks * 2) * cardColorArray.Length;
-        int totalWildCards = (numberOfDecks * 4) * 2;
-
-        int totalCards = totalNumberCards + totalZeroCards + totalWildCards;
 
         Debug.Log("Build Number Cards");
         // Build the deck and create a random placement
@@ -309,15 +292,54 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         TogglePlayableDimming();
 
+
         FirstPlay(players.Current());
 
         Debug.Log("Leaving Start()");
+    }
+
+    private async Task InitializeAssetsAndPlayers()
+    {
+        Debug.Log("Entered Start()");
+        if (PhotonNetwork.CurrentRoom.CustomProperties != null)
+        {
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(Constants.SeedKeyName, out var value);
+            Debug.Log($"Seed value {value}");
+            uint roomSeed = Convert.ToUInt32(value);
+            rand.InitState(roomSeed);
+            dealDeck.SetRandomSeed(roomSeed);
+            dealDeck.StackGrowsDown = false;
+            discardDeck.SetRandomSeed(roomSeed);
+            discardDeck.StackGrowsDown = true;
+        }
+        else
+        {
+            rand.InitState();
+        }
+
+        gameOptions = gameOptions ?? new GameOptions();
+
+        LoadAllSounds();
+        await LoadAllPrefabs();
+
+        if (gameOptions.HumanPlayers < 1)
+        {
+            throw new ArgumentOutOfRangeException("You must have 1 or more human players for this game!");
+        }
+
+        numOfPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
+
+        Debug.Log("Build players");
+        BuildGamePlayers();
     }
 
     private void TogglePlayableDimming()
     {
         if (players.Current() == LocalPlayer)
         {
+            audioSource.clip = playerTurn;
+            audioSource.Play();
+
             LocalPlayer.ItsYourTurn(true);
             LocalPlayer.DimCardsThatCantBePlayed(playerToggle.isOn, discardDeck.PeekTopCard());
         }
@@ -363,6 +385,27 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var wildCardOperation = wildCardSelect.LoadAssetAsync<GameObject>();
         wildCardSelectPrefab = await wildCardOperation.Task;
 
+    }
+
+    private void LoadAllSounds()
+    {
+        Debug.Log("Loading Card Play Sounds");
+
+        for (int i = 1; i <= 5; i++)
+        {
+            AsyncOperationHandle<AudioClip[]> spriteHandle = Addressables.LoadAssetAsync<AudioClip[]>($"play_card_{i}");
+            spriteHandle.Completed += LoadSoundToDictionary;
+        }
+     
+        
+    }
+
+    private void LoadSoundToDictionary(AsyncOperationHandle<AudioClip[]> obj)
+    {
+        if (obj.Status == AsyncOperationStatus.Succeeded)
+        {
+            cardPlaySounds.Add(obj.Result.First());
+        }
     }
 
     private void FirstPlay(LocalPlayerBase<Player> player)
@@ -457,13 +500,13 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void HandleWildCard(Card cardToPlay)
     {
-        var compButton = wildCardSelectPrefab.GetComponentInChildren<SelectWildButton>();
+        audioSource.clip = wildCardPopup;
+        audioSource.Play();
         var wildCardPrefab = Instantiate(wildCardSelectPrefab, transform);
         SelectWildButton.CardToChange = cardToPlay;
         SelectWildButton.ReturnCard = (card) =>
         {
             UpdateRoomProperties(card, LocalPlayer);
-            //GameLoop(card, LocalPlayer);
             Destroy(wildCardPrefab);
         };
     }
@@ -577,7 +620,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     }
 
     /// <summary>
-    /// Plkace the player around the unit cirlce at the specified section
+    /// Place the player around the unit cirlce at the specified section
     /// </summary>
     private static T PlaceInCircle<T>(Transform centerOfScreen, GameObject prefab, int itemNumber, int totalObjects, float minorAxis, float majorAxis) where T : MonoBehaviour
     {
@@ -709,6 +752,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     }
                 }
             }
+            else if (propertiesThatChanged.ContainsKey(Constants.RestartGameAfterWin))
+            {
+                Destroy(winnerBannerPrefabToDestroy);
+                ResetDecks();
+                StartGame();
+            }
             Debug.Log("");
             base.OnRoomPropertiesUpdate(propertiesThatChanged);
         }
@@ -776,6 +825,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void ShowWin(LocalPlayerBase<Player> player)
     {
+        
+        winnerBannerPrefabToDestroy = Instantiate(winnerBannerPrefab, transform);
 
         int score = 0;
         foreach (var item in players)
@@ -793,9 +844,46 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         playerScore[player.Player] += score;
 
+        var allButtons = winnerBannerPrefabToDestroy.GetComponentsInChildren<Button>(true);
+
+        Button leaveGame = null;
+        Button newGame = null;
+
+        foreach (var item in allButtons)
+        {
+            switch (item.name)
+            {
+                case "Exit":
+                    leaveGame = item;
+                    break;
+                case "PlayAgain":
+                    newGame = item;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        newGame.onClick.AddListener(() =>
+        {
+            var s = Guid.NewGuid().ToString();
+            Debug.Log($"Calling UpdateRoomProperties with {s}");
+            var hashTable = new ExitGames.Client.Photon.Hashtable
+            {
+                [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
+                [Constants.RestartGameAfterWin] = true,
+            };
+            PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
+        });
+
+        leaveGame.onClick.AddListener(() =>
+        {
+            Application.Quit();
+        });
+
         var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.NickName, Score = scores.Value };
 
-        var allTextMesh = winnerBannerPrefab.GetComponentsInChildren<TextMeshProUGUI>(true);
+        var allTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
         TextMeshProUGUI winnerBanner = null;
         TextMeshProUGUI playerNameScoreCard = null;
         TextMeshProUGUI dotsScoreCard = null;
@@ -822,12 +910,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-
-        winnerBanner.text = $"{player.name} WINS!";
-
         var playerNameBuffer = string.Empty;
         var playerScoreBuffer = string.Empty;
         var dotsBuffer = string.Empty;
+
+        winnerBanner.text = $"{player.name} WINS!";
+
         foreach (var item in orderedScore)
         {
             playerNameBuffer += $"{item.Name}\n";
@@ -839,8 +927,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         dotsScoreCard.text = dotsBuffer;
         playerScoreScoreCard.text = playerScoreBuffer;
 
+        audioSource.clip = playerWin;
+        audioSource.Play();
 
-        Instantiate(winnerBannerPrefab, transform);
         stopGame = true;
     }
 
@@ -879,6 +968,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             Debug.Log($"Card {c} is a wild card");
             c.SetProps(c.CardRandom, c.Value, c.WildColor);
         }
+        
+        var nextSound = rand.NextUInt(0, (uint)cardPlaySounds.Count);
+        AudioClip clipToPlay = cardPlaySounds[(int)nextSound];
+        
+
         switch (ga)
         {
             case GameAction.Reverse:
@@ -944,5 +1038,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             default:
                 break;
         }
+
+        audioSource.clip = clipToPlay;
+        audioSource.Play();
+
     }
 }

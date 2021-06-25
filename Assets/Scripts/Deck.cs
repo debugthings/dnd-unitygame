@@ -200,4 +200,12 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         }
     }
 
+    public void ClearDeck() 
+    {
+        foreach (var item in deck)
+        {
+            Destroy(item.gameObject);
+        }
+        deck.Clear(); 
+    }
 }

@@ -279,4 +279,13 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         }
         return score;
     }
+
+    public virtual void ClearHand()
+    {
+        foreach (var item in Hand)
+        {
+            Destroy(item.gameObject);
+        }
+        Hand.Clear();
+    }
 }
