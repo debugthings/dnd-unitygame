@@ -157,4 +157,14 @@ public class NetworkPlayer : LocalPlayer
         FixupCardPositions(true);
     }
 
+    public override void ClearHand()
+    {
+        foreach (var item in dimmableCardList)
+        {
+            Destroy(item);
+        }
+        dimmableCardList.Clear();
+        base.ClearHand();
+    }
+
 }
