@@ -32,7 +32,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
-    private IDictionary<Player, int> playerScore = new Dictionary<Player, int>();
+    private IDictionary<LocalPlayerBase<Player>, int> playerScore = new Dictionary<LocalPlayerBase<Player>, int>();
 
 
     private GameObject cardPrefab;
@@ -921,9 +921,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         int score = 0;
         foreach (var item in players)
         {
-            if (!playerScore.ContainsKey(item.Player))
+            if (!playerScore.ContainsKey(item))
             {
-                playerScore[item.Player] = 0;
+                playerScore[item] = 0;
             }
 
             if (item != player)
@@ -932,7 +932,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-        playerScore[player.Player] += score;
+        playerScore[player] += score;
 
         var allButtons = winnerBannerPrefabToDestroy.GetComponentsInChildren<Button>(true);
 
@@ -971,13 +971,15 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             Application.Quit();
         });
 
-        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.NickName, Score = scores.Value };
+        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.Player.NickName, Score = scores.Value, PointsGiven = scores.Key.ScoreHand() };
 
         var allTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
         TextMeshProUGUI winnerBanner = null;
         TextMeshProUGUI playerNameScoreCard = null;
         TextMeshProUGUI dotsScoreCard = null;
         TextMeshProUGUI playerScoreScoreCard = null;
+        TextMeshProUGUI pointsGivenScoreCard = null;
+
 
         foreach (var item in allTextMesh)
         {
@@ -995,6 +997,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 case "PlayerScores":
                     playerScoreScoreCard = item;
                     break;
+                case "PointsGiven":
+                    pointsGivenScoreCard = item;
+                    break;
                 default:
                     break;
             }
@@ -1003,19 +1008,24 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var playerNameBuffer = string.Empty;
         var playerScoreBuffer = string.Empty;
         var dotsBuffer = string.Empty;
+        var pointsGivenBuffer = string.Empty;
+
 
         winnerBanner.text = $"{player.name} WINS!";
 
         foreach (var item in orderedScore)
         {
+            string pointsGiven = 
             playerNameBuffer += $"{item.Name}\n";
             dotsBuffer += ".........\n";
             playerScoreBuffer += $"{item.Score}\n";
+            pointsGivenBuffer += item.PointsGiven == 0 ? "\n" : $"(+{item.PointsGiven})\n";
         }
 
         playerNameScoreCard.text = playerNameBuffer;
         dotsScoreCard.text = dotsBuffer;
         playerScoreScoreCard.text = playerScoreBuffer;
+        pointsGivenScoreCard.text = pointsGivenBuffer;
 
         audioSource.clip = playerWin;
         audioSource.Play();
