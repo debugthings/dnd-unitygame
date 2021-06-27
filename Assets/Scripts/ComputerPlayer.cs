@@ -135,11 +135,11 @@ public class ComputerPlayer : LocalPlayerBase<object>
 
     public override void ClearHand()
     {
-        base.ClearHand();
         foreach (var item in dimmableCardList)
         {
-            Destroy(item.gameObject);
+            Destroy(item);
         }
         dimmableCardList.Clear();
+        base.ClearHand();
     }
 }

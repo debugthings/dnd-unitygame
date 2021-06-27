@@ -15,6 +15,9 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
+
+    private PhotonView photonViewCache;
+
     private const float cardStackZOrderOffset = 0.01f;
 
     private CircularList<LocalPlayerBase<Player>, Player> players = new CircularList<LocalPlayerBase<Player>, Player>();
@@ -73,6 +76,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private bool gameStarted = false;
 
     private static SemaphoreSlim _gamelock = new SemaphoreSlim(0);
+
 
     // Start is called before the first frame update
     async void Start()
@@ -320,6 +324,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             rand.InitState();
         }
 
+        photonViewCache = this.photonView;
+
         gameOptions = gameOptions ?? new GameOptions();
 
         LoadAllSounds();
@@ -399,8 +405,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             AsyncOperationHandle<AudioClip[]> spriteHandle = Addressables.LoadAssetAsync<AudioClip[]>($"play_card_{i}");
             spriteHandle.Completed += LoadSoundToDictionary;
         }
-     
-        
+
+
     }
 
     private void LoadSoundToDictionary(AsyncOperationHandle<AudioClip[]> obj)
@@ -493,7 +499,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 }
                 else
                 {
-                    UpdateRoomProperties(cardToPlay, LocalPlayer);
+                    CallPUNRpc(cardToPlay, LocalPlayer);
                 }
             }
         }
@@ -509,7 +515,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         SelectWildButton.CardToChange = cardToPlay;
         SelectWildButton.ReturnCard = (card) =>
         {
-            UpdateRoomProperties(card, LocalPlayer);
+            CallPUNRpc(card, LocalPlayer);
             Destroy(wildCardPrefab);
         };
     }
@@ -774,6 +780,87 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     }
 
+    [PunRPC]
+    void SendMoveToAllPlayers(Hashtable propertiesThatChanged)
+    {
+        try
+        {
+            var cardStringCheck = propertiesThatChanged?[Constants.CardToPlay] ?? "NULL";
+            var cardColorCheck = propertiesThatChanged?[Constants.CardColor] ?? "NULL";
+            var cardWildColorCheck = propertiesThatChanged?[Constants.CardWildColor] ?? "NULL";
+            var cardValueCheck = propertiesThatChanged?[Constants.CardValue] ?? "NULL";
+            var updateGuid = propertiesThatChanged?[Constants.UpdateGuid] ?? "NULL";
+
+            Debug.Log("");
+            Debug.Log($"Room properties updated at {DateTime.Now}");
+            Debug.Log($"Room properties update guid {updateGuid}");
+            Debug.Log($"cardString = {cardStringCheck}\tcardColor = {cardColorCheck}\tcardWildColor = {cardWildColorCheck}\tcardValue = {cardValueCheck}");
+
+            if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
+            {
+                var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
+                if (playerSending != null)
+                {
+                    var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
+                    string cardColor = (string)propertiesThatChanged?[Constants.CardColor];
+                    string cardWildColor = (string)propertiesThatChanged?[Constants.CardWildColor];
+                    string cardValue = (string)propertiesThatChanged?[Constants.CardValue];
+                    Debug.Log($"Found player {playerSending.Name}");
+                    var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay]);
+
+                    if (cardToPlay == null)
+                    {
+                        Debug.Log($"Card was NOT found in player's hand");
+                        // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
+                        if (dealDeck.PeekTopCard().CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay])
+                        {
+                            cardToPlay = TakeFromDealPile();
+                            Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
+                            playerSending.AddCard(cardToPlay);
+                        }
+
+                        //TODO In the evnt this client is out of sync we need to resync
+                    }
+
+                    if (cardToPlay.Color == Card.CardColor.Wild)
+                    {
+                        // When we're here we need to make sure we honor the player's wild color choice
+                        Debug.Log($"Set {cardToPlay} to wild color {cardWildColor}");
+                        cardToPlay.SetWildColor(cardWildColor);
+                    }
+
+                    Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+                    cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
+                    GameLoop(cardToPlay, playerSending, true);
+
+                    // If the player has taken the last card the the discard deck is swapped
+                    // we will need to check and pull a new card.
+                    if (dealDeck.Count == 0)
+                    {
+                        Debug.Log($"Discard deck is empty.");
+                        discardDeck.AddCardToDeck(TakeFromDealPile(), true);
+                    }
+                }
+            }
+            else if (propertiesThatChanged.ContainsKey(Constants.RestartGameAfterWin))
+            {
+                Destroy(winnerBannerPrefabToDestroy);
+                ResetDecks();
+                StartGame();
+            }
+            Debug.Log("");
+            base.OnRoomPropertiesUpdate(propertiesThatChanged);
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        finally
+        {
+        }
+
+    }
+
     /// <summary>
     /// Performs the primary game mechanic of checking the cards and the player that is performing the action.
     /// </summary>
@@ -828,7 +915,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void ShowWin(LocalPlayerBase<Player> player)
     {
-        
+
         winnerBannerPrefabToDestroy = Instantiate(winnerBannerPrefab, transform);
 
         int score = 0;
@@ -876,7 +963,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
                 [Constants.RestartGameAfterWin] = true,
             };
-            PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
+            photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllViaServer, hashTable);
         });
 
         leaveGame.onClick.AddListener(() =>
@@ -936,7 +1023,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         stopGame = true;
     }
 
-    private static void UpdateRoomProperties(Card c, LocalPlayer player)
+    private void CallPUNRpc(Card c, LocalPlayer player)
     {
         var s = Guid.NewGuid().ToString();
         Debug.Log($"Calling UpdateRoomProperties with {s}");
@@ -949,7 +1036,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             [Constants.CardValue] = c.Value.ToString(),
             [Constants.UpdateGuid] = s
         };
-        PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
+        photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllViaServer, hashTable);
     }
 
     /// <summary>
@@ -971,10 +1058,10 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             Debug.Log($"Card {c} is a wild card");
             c.SetProps(c.CardRandom, c.Value, c.WildColor);
         }
-        
+
         var nextSound = rand.NextUInt(0, (uint)cardPlaySounds.Count);
         AudioClip clipToPlay = cardPlaySounds[(int)nextSound];
-        
+
 
         switch (ga)
         {
