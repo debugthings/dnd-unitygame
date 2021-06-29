@@ -32,10 +32,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
+
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private IDictionary<LocalPlayerBase<Player>, int> playerScore = new Dictionary<LocalPlayerBase<Player>, int>();
 
-
+    // All prefabs for this gameboard
     private GameObject cardPrefab;
     private GameObject dimmableCardPrefab;
     private GameObject playerPrefab;
@@ -44,7 +45,10 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private GameObject wildCardSelectPrefab;
     private GameObject winnerBannerPrefabToDestroy;
 
+    // Used to calculate screen resize events
+    private Vector2 lastScreenSize;
 
+    // The two decks that handle cards
     public CardDeck dealDeck;
     public CardDeck discardDeck;
 
@@ -584,6 +588,50 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
     }
 
+    private void RepoisitionGamePlayers()
+    {
+        // For the game we need the local player to be the 6 o'clock position on the table
+        // Or, more accurately at 3pi/2 radians
+        // We also need to make sure there is some repeatable way to get players in order
+        int myNumber = 0;
+        var playersInRoom = players.OrderBy(player => player.Player.ActorNumber);
+        var maxPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
+        foreach (var player in playersInRoom)
+        {
+            if (player.Player == PhotonNetwork.LocalPlayer)
+            {
+                break;
+            }
+            myNumber++;
+        }
+
+        var camera = Camera.main;
+        var circleRadius = camera.orthographicSize;
+        int playerCounter = 1;
+        foreach (var player in playersInRoom)
+        {
+            // Determin the position of the player in the circle
+            int baseNumber = (maxPlayers - myNumber + playerCounter++);
+            int position = baseNumber - maxPlayers <= 0 ? baseNumber : baseNumber - maxPlayers;
+
+            // Determine the eccentricity of the screen
+            Camera cam = Camera.main;
+            float minorAxis = cam.orthographicSize;
+            float majorAxis = minorAxis * cam.aspect;
+
+            // Scale down when over a specific size
+            var scale = numOfPlayers >= 6 ? 0.75 : 1;
+            var maxNumberOfCards = numOfPlayers >= 6 ? 8 : 10;
+
+            Debug.Log($"Creating player {player.Player.NickName} with actor number {player.Player.ActorNumber}");
+
+            var photonPlayer = players.FindPlayerByNetworkPlayer(player.Player);
+            DeterminePlayerPosition(position, numOfPlayers, minorAxis, majorAxis, out float angle, out float x, out float y);
+            player.transform.position = new Vector3(x, y);
+            player.transform.localScale = 0.5f * Vector3.one;
+            player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
+        }
+    }
     private void FixupCardsPerColor()
     {
         // We should only add custom cards when it's time...
@@ -625,7 +673,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     // Update is called once per frame
     void Update()
     {
-
+        Vector2 screenSize = new Vector2(Screen.width, Screen.height);
+        if (lastScreenSize != screenSize)
+        {
+            lastScreenSize = screenSize;
+            RepoisitionGamePlayers();
+        }
     }
 
     /// <summary>
@@ -633,20 +686,26 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     private static T PlaceInCircle<T>(Transform centerOfScreen, GameObject prefab, int itemNumber, int totalObjects, float minorAxis, float majorAxis) where T : MonoBehaviour
     {
-        // The local player will always be at 3pi/2 (270 degrees) on the circle
-        // This is the bottom of the player screen. All others will be situated around the circle
-
-        float degrees270 = (Mathf.PI * 3) / 2;
-        float angle = ((itemNumber - 1) * Mathf.PI * 2) / totalObjects;
-        float angleOncircle = degrees270 + angle;
-        float x = majorAxis * Mathf.Cos(angleOncircle);
-        float y = minorAxis * Mathf.Sin(angleOncircle);
-        Debug.Log($"Player (x,y) coordinate = ({x},{y})");
-        Debug.Log($"Player angle on circle = {angleOncircle * Mathf.Rad2Deg}");
+        float angle, x, y;
+        DeterminePlayerPosition(itemNumber, totalObjects, minorAxis, majorAxis, out angle, out x, out y);
         GameObject playerInstantiate = Instantiate(prefab, new Vector3(x, y), Quaternion.LookRotation(Vector3.zero, Vector3.up), centerOfScreen);
         var player = playerInstantiate.GetComponent<T>();
         player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
         return player;
+    }
+
+    private static void DeterminePlayerPosition(int itemNumber, int totalObjects, float minorAxis, float majorAxis, out float angle, out float x, out float y)
+    {
+        // The local player will always be at 3pi/2 (270 degrees) on the circle
+        // This is the bottom of the player screen. All others will be situated around the circle
+
+        float degrees270 = (Mathf.PI * 3) / 2;
+        angle = ((itemNumber - 1) * Mathf.PI * 2) / totalObjects;
+        float angleOncircle = degrees270 + angle;
+        x = majorAxis * Mathf.Cos(angleOncircle);
+        y = minorAxis * Mathf.Sin(angleOncircle);
+        Debug.Log($"Player (x,y) coordinate = ({x},{y})");
+        Debug.Log($"Player angle on circle = {angleOncircle * Mathf.Rad2Deg}");
     }
 
     /// <summary>
