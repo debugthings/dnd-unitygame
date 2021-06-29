@@ -17,5 +17,7 @@ namespace Assets.Scripts
         public static string UpdateGuid => "updateGuid";
         public static string GameStarted => "gameStarted";
         public static string RestartGameAfterWin => "RestartGameAfterWin";
+        public static string PlayerReady => "PlayerReady";
+        public static string WinnerPrefabName => "WinnerPrefabName";
     }
 }

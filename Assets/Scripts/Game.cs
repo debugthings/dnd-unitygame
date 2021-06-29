@@ -12,6 +12,7 @@ using ExitGames.Client.Photon;
 using Assets.Scripts;
 using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.SceneManagement;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
@@ -60,9 +61,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AudioClip playerWin;
     public AudioClip playerTurn;
     public AudioClip wildCardPopup;
-
-
-
 
     public LocalPlayer CurrentPlayer => (LocalPlayer)players.Current();
 
@@ -192,6 +190,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         gameStarted = true;
         stopGame = false;
 
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerReady] = null });
+        
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
         // For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
@@ -696,90 +696,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         return GameAction.NextPlayer;
     }
 
-    /// <summary>
-    /// When a network player updates the room properties we will play the game as expected
-    /// </summary>
-    /// <param name="propertiesThatChanged">A list of properties from Photon</param>
-    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
-    {
-        try
-        {
-            var cardStringCheck = propertiesThatChanged?[Constants.CardToPlay] ?? "NULL";
-            var cardColorCheck = propertiesThatChanged?[Constants.CardColor] ?? "NULL";
-            var cardWildColorCheck = propertiesThatChanged?[Constants.CardWildColor] ?? "NULL";
-            var cardValueCheck = propertiesThatChanged?[Constants.CardValue] ?? "NULL";
-            var updateGuid = propertiesThatChanged?[Constants.UpdateGuid] ?? "NULL";
-
-            Debug.Log("");
-            Debug.Log($"Room properties updated at {DateTime.Now}");
-            Debug.Log($"Room properties update guid {updateGuid}");
-            Debug.Log($"cardString = {cardStringCheck}\tcardColor = {cardColorCheck}\tcardWildColor = {cardWildColorCheck}\tcardValue = {cardValueCheck}");
-
-            if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
-            {
-                var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
-                if (playerSending != null)
-                {
-                    var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
-                    string cardColor = (string)propertiesThatChanged?[Constants.CardColor];
-                    string cardWildColor = (string)propertiesThatChanged?[Constants.CardWildColor];
-                    string cardValue = (string)propertiesThatChanged?[Constants.CardValue];
-                    Debug.Log($"Found player {playerSending.Name}");
-                    var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay]);
-
-                    if (cardToPlay == null)
-                    {
-                        Debug.Log($"Card was NOT found in player's hand");
-                        // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
-                        if (dealDeck.PeekTopCard().CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay])
-                        {
-                            cardToPlay = TakeFromDealPile();
-                            Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
-                            playerSending.AddCard(cardToPlay);
-                        }
-
-                        //TODO In the evnt this client is out of sync we need to resync
-                    }
-
-                    if (cardToPlay.Color == Card.CardColor.Wild)
-                    {
-                        // When we're here we need to make sure we honor the player's wild color choice
-                        Debug.Log($"Set {cardToPlay} to wild color {cardWildColor}");
-                        cardToPlay.SetWildColor(cardWildColor);
-                    }
-
-                    Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
-                    cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
-                    GameLoop(cardToPlay, playerSending, true);
-
-                    // If the player has taken the last card the the discard deck is swapped
-                    // we will need to check and pull a new card.
-                    if (dealDeck.Count == 0)
-                    {
-                        Debug.Log($"Discard deck is empty.");
-                        discardDeck.AddCardToDeck(TakeFromDealPile(), true);
-                    }
-                }
-            }
-            else if (propertiesThatChanged.ContainsKey(Constants.RestartGameAfterWin))
-            {
-                Destroy(winnerBannerPrefabToDestroy);
-                ResetDecks();
-                StartGame();
-            }
-            Debug.Log("");
-            base.OnRoomPropertiesUpdate(propertiesThatChanged);
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
-        finally
-        {
-        }
-
-    }
-
     [PunRPC]
     void SendMoveToAllPlayers(Hashtable propertiesThatChanged)
     {
@@ -861,6 +777,26 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     }
 
+    [PunRPC]
+    void RestartGame(Hashtable propertiesThatChanged)
+    {
+        try
+        {
+            Destroy(winnerBannerPrefabToDestroy);
+            ResetDecks();
+            StartGame();
+            Debug.Log("");
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        finally
+        {
+        }
+
+    }
+
     /// <summary>
     /// Performs the primary game mechanic of checking the cards and the player that is performing the action.
     /// </summary>
@@ -917,7 +853,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
 
         winnerBannerPrefabToDestroy = Instantiate(winnerBannerPrefab, transform);
+        winnerBannerPrefabToDestroy.name = Constants.WinnerPrefabName;
 
+        // Tally up the winner's score
         int score = 0;
         foreach (var item in players)
         {
@@ -934,52 +872,55 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         playerScore[player] += score;
 
+
+        // Get all of the buttons in the prefab
         var allButtons = winnerBannerPrefabToDestroy.GetComponentsInChildren<Button>(true);
 
+        Button exitApplication = null;
+        Button playerReady = null;
         Button leaveGame = null;
-        Button newGame = null;
+
 
         foreach (var item in allButtons)
         {
             switch (item.name)
             {
                 case "Exit":
-                    leaveGame = item;
+                    exitApplication = item;
                     break;
                 case "PlayAgain":
-                    newGame = item;
+                    playerReady = item;
+                    break;
+                case "LeaveGame":
+                    leaveGame = item;
                     break;
                 default:
                     break;
             }
         }
 
-        newGame.onClick.AddListener(() =>
+        // Add callbacks to these buttons
+        playerReady.onClick.AddListener(() =>
         {
-            var s = Guid.NewGuid().ToString();
-            Debug.Log($"Calling UpdateRoomProperties with {s}");
-            var hashTable = new ExitGames.Client.Photon.Hashtable
-            {
-                [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
-                [Constants.RestartGameAfterWin] = true,
-            };
-            photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllViaServer, hashTable);
+            PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { [Constants.PlayerReady] = true });
+            playerReady.interactable = false;
+
         });
 
-        leaveGame.onClick.AddListener(() =>
+        exitApplication.onClick.AddListener(() =>
         {
             Application.Quit();
         });
 
-        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.Player.NickName, Score = scores.Value, PointsGiven = scores.Key.ScoreHand() };
+        leaveGame.onClick.AddListener(() =>
+        {
+            PhotonNetwork.LeaveRoom();
+            SceneManager.LoadScene("CreateGame", LoadSceneMode.Single);
+        });
 
+        // Generate WinnerBanner
         var allTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
         TextMeshProUGUI winnerBanner = null;
-        TextMeshProUGUI playerNameScoreCard = null;
-        TextMeshProUGUI dotsScoreCard = null;
-        TextMeshProUGUI playerScoreScoreCard = null;
-        TextMeshProUGUI pointsGivenScoreCard = null;
-
 
         foreach (var item in allTextMesh)
         {
@@ -988,6 +929,39 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 case "WinnerBanner":
                     winnerBanner = item;
                     break;
+                default:
+                    break;
+            }
+        }
+
+        winnerBanner.text = $"{player.name} WINS!";
+
+        // Generate score card
+        GenerateScoreCard();
+
+        audioSource.clip = playerWin;
+        audioSource.Play();
+
+        stopGame = true;
+    }
+
+    private void GenerateScoreCard()
+    {
+        // Create the scorecard list
+        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.Player.NickName, Score = scores.Value, PointsGiven = scores.Key.ScoreHand(), Ready = scores.Key.Player.CustomProperties.ContainsKey(Constants.PlayerReady) };
+
+        // Get all text in the banner prefab
+        var scoreCardTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
+
+        TextMeshProUGUI playerNameScoreCard = null;
+        TextMeshProUGUI dotsScoreCard = null;
+        TextMeshProUGUI playerScoreScoreCard = null;
+        TextMeshProUGUI pointsGivenScoreCard = null;
+
+        foreach (var item in scoreCardTextMesh)
+        {
+            switch (item.name)
+            {
                 case "PlayerNames":
                     playerNameScoreCard = item;
                     break;
@@ -1005,39 +979,37 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
+        // We will create text buffers and append the strings. No need to optimize since we're typically dealing with less than 10 strings.
         var playerNameBuffer = string.Empty;
         var playerScoreBuffer = string.Empty;
         var dotsBuffer = string.Empty;
         var pointsGivenBuffer = string.Empty;
 
-
-        winnerBanner.text = $"{player.name} WINS!";
-
         foreach (var item in orderedScore)
         {
-            string pointsGiven = 
+            // We will want to display a "ready" prompt next to the score so we can indicate who's left
+            string playerReady = string.Empty;
+            if (item.Ready)
+            {
+                playerReady = " (ready)";
+            }
             playerNameBuffer += $"{item.Name}\n";
             dotsBuffer += ".........\n";
             playerScoreBuffer += $"{item.Score}\n";
-            pointsGivenBuffer += item.PointsGiven == 0 ? "\n" : $"(+{item.PointsGiven})\n";
+            pointsGivenBuffer += item.PointsGiven == 0 ? $"{playerReady}\n" : $"(+{item.PointsGiven}){playerReady}\n";
         }
 
         playerNameScoreCard.text = playerNameBuffer;
         dotsScoreCard.text = dotsBuffer;
         playerScoreScoreCard.text = playerScoreBuffer;
         pointsGivenScoreCard.text = pointsGivenBuffer;
-
-        audioSource.clip = playerWin;
-        audioSource.Play();
-
-        stopGame = true;
     }
 
     private void CallPUNRpc(Card c, LocalPlayer player)
     {
         var s = Guid.NewGuid().ToString();
         Debug.Log($"Calling UpdateRoomProperties with {s}");
-        var hashTable = new ExitGames.Client.Photon.Hashtable
+        var hashTable = new Hashtable
         {
             [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
             [Constants.CardToPlay] = c.CardRandom,
@@ -1142,5 +1114,52 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         audioSource.clip = clipToPlay;
         audioSource.Play();
 
+    }
+
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    {
+        GenerateScoreCard();
+        CheckAndStartGame();
+        base.OnPlayerPropertiesUpdate(targetPlayer, changedProps);
+    }
+
+    private static bool CheckAllPlayersAreReady()
+    {
+        bool allPlayersReady = true;
+        if (PhotonNetwork.CurrentRoom.Players.Count == 1)
+        {
+            return false;
+        }
+        foreach (var item in PhotonNetwork.CurrentRoom.Players)
+        {
+            if (item.Value.CustomProperties.ContainsKey(Constants.PlayerReady))
+            {
+                allPlayersReady &= true;
+            }
+            else
+            {
+                allPlayersReady &= false;
+            }
+        }
+
+        return allPlayersReady;
+    }
+
+    private void CheckAndStartGame()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (CheckAllPlayersAreReady())
+            {
+                var s = Guid.NewGuid().ToString();
+                Debug.Log($"Calling UpdateRoomProperties with {s}");
+                var hashTable = new Hashtable
+                {
+                    [Constants.PlayerSendingMessage] = PhotonNetwork.LocalPlayer.ActorNumber,
+                    [Constants.RestartGameAfterWin] = true,
+                };
+                photonView.RPC("RestartGame", RpcTarget.AllViaServer, hashTable);
+            }
+        }
     }
 }
