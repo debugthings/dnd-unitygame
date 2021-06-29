@@ -619,16 +619,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             float minorAxis = cam.orthographicSize;
             float majorAxis = minorAxis * cam.aspect;
 
-            // Scale down when over a specific size
-            var scale = numOfPlayers >= 6 ? 0.75 : 1;
-            var maxNumberOfCards = numOfPlayers >= 6 ? 8 : 10;
-
             Debug.Log($"Creating player {player.Player.NickName} with actor number {player.Player.ActorNumber}");
 
             var photonPlayer = players.FindPlayerByNetworkPlayer(player.Player);
             DeterminePlayerPosition(position, numOfPlayers, minorAxis, majorAxis, out float angle, out float x, out float y);
             player.transform.position = new Vector3(x, y);
-            player.transform.localScale = 0.5f * Vector3.one;
             player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
         }
     }
