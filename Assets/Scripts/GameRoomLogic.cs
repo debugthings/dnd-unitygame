@@ -1,7 +1,6 @@
 ﻿using Assets.Scripts;
 using Photon.Pun;
-using System.Collections;
-using System.Collections.Generic;
+using Photon.Realtime;
 using System.Linq;
 using System.Text;
 using UnityEngine;
@@ -12,27 +11,31 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 {
     public TMPro.TMP_Text playerList, roomName;
     public GameObject startGame;
+    public Button readyButton;
     // Start is called before the first frame update
+
+    private bool startGameWhenAllAreReady = false;
     void Start()
     {
         Debug.Log($"Game room logic started.");
         StartupRoom();
         var button = startGame.GetComponent<Button>();
+
+        readyButton.onClick.AddListener(() =>
+        {
+            PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { [Constants.PlayerReady] = true });
+            readyButton.interactable = false;
+        });
+
         if (PhotonNetwork.IsMasterClient)
         {
             Debug.Log($"Client is master client, setting button to be a start button.");
             button.onClick.AddListener(() =>
             {
-                PhotonNetwork.CurrentRoom.IsOpen = false;
-                Debug.Log($"Starting game from master client.");
-                var hashTable = new ExitGames.Client.Photon.Hashtable
-                {
-                    [Constants.GameStarted] = true
-                };
-                PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
-                // When the master client starts the game we should make the room maxed out so nobody can join
-                PhotonNetwork.LoadLevel("LocalGame");
-                // Turn off scene sync so a newly joining player won't be presented with a game board.
+                startGameWhenAllAreReady = true;
+                button.interactable = false;
+                readyButton.interactable = false;
+                PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { [Constants.PlayerReady] = true });
             });
         }
         else
@@ -46,7 +49,38 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
                 SceneManager.LoadScene("CreateGame");
             });
         }
+    }
 
+    private static bool CheckAllPlayersAreReady()
+    {
+        bool allPlayersReady = true;
+        foreach (var item in PhotonNetwork.CurrentRoom.Players)
+        {
+            if (item.Value.CustomProperties.ContainsKey(Constants.PlayerReady))
+            {
+                allPlayersReady &= true;
+            }
+            else
+            {
+                allPlayersReady &= false;
+            }
+        }
+
+        return allPlayersReady;
+    }
+
+    private static void StartGame()
+    {
+        PhotonNetwork.CurrentRoom.IsOpen = false;
+        Debug.Log($"Starting game from master client.");
+        var hashTable = new ExitGames.Client.Photon.Hashtable
+        {
+            [Constants.GameStarted] = true
+        };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
+        // When the master client starts the game we should make the room maxed out so nobody can join
+        PhotonNetwork.LoadLevel("LocalGame");
+        // Turn off scene sync so a newly joining player won't be presented with a game board.
     }
 
     private void StartupRoom()
@@ -105,20 +139,48 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 
         foreach (var item in playerCollection)
         {
-            playersInGame.AppendLine(item.Value.NickName);
+            string playerName = item.Value.NickName;
+            if (item.Value.CustomProperties.ContainsKey(Constants.PlayerReady))
+            {
+                playerName += $" (ready)";
+            }
+            playersInGame.AppendLine(playerName);
         }
         playerList.text = playersInGame.ToString();
 
-        // Only allow us to start a game with more than one player
-        if (PhotonNetwork.CurrentRoom.PlayerCount >= 2 && PhotonNetwork.IsMasterClient)
+        if (!startGameWhenAllAreReady)
         {
-            var button = startGame.GetComponent<Button>();
-            button.interactable = true;
+            // Only allow us to start a game with more than one player
+            if (PhotonNetwork.CurrentRoom.PlayerCount >= 2 && PhotonNetwork.IsMasterClient)
+            {
+                var button = startGame.GetComponent<Button>();
+                button.interactable = true;
+            }
+            else if (PhotonNetwork.CurrentRoom.PlayerCount < 2 && PhotonNetwork.IsMasterClient)
+            {
+                var button = startGame.GetComponent<Button>();
+                button.interactable = false;
+            }
+        } else
+        {
+            CheckAndStartGame();
         }
-        else if (PhotonNetwork.CurrentRoom.PlayerCount < 2 && PhotonNetwork.IsMasterClient)
+    }
+
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps)
+    {
+        base.OnPlayerPropertiesUpdate(targetPlayer, changedProps);
+        UpdatePlayerList();
+    }
+
+    private void CheckAndStartGame()
+    {
+        if (startGameWhenAllAreReady)
         {
-            var button = startGame.GetComponent<Button>();
-            button.interactable = false;
+            if (CheckAllPlayersAreReady())
+            {
+                StartGame();
+            }
         }
     }
 

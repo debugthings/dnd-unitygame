@@ -12,6 +12,7 @@ using ExitGames.Client.Photon;
 using Assets.Scripts;
 using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.SceneManagement;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
@@ -31,10 +32,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
+
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private IDictionary<LocalPlayerBase<Player>, int> playerScore = new Dictionary<LocalPlayerBase<Player>, int>();
 
-
+    // All prefabs for this gameboard
     private GameObject cardPrefab;
     private GameObject dimmableCardPrefab;
     private GameObject playerPrefab;
@@ -43,7 +45,10 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private GameObject wildCardSelectPrefab;
     private GameObject winnerBannerPrefabToDestroy;
 
+    // Used to calculate screen resize events
+    private Vector2 lastScreenSize;
 
+    // The two decks that handle cards
     public CardDeck dealDeck;
     public CardDeck discardDeck;
 
@@ -60,9 +65,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AudioClip playerWin;
     public AudioClip playerTurn;
     public AudioClip wildCardPopup;
-
-
-
 
     public LocalPlayer CurrentPlayer => (LocalPlayer)players.Current();
 
@@ -192,6 +194,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         gameStarted = true;
         stopGame = false;
 
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerReady] = null });
+        
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
         // For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
@@ -584,6 +588,45 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
     }
 
+    private void RepoisitionGamePlayers()
+    {
+        // For the game we need the local player to be the 6 o'clock position on the table
+        // Or, more accurately at 3pi/2 radians
+        // We also need to make sure there is some repeatable way to get players in order
+        int myNumber = 0;
+        var playersInRoom = players.OrderBy(player => player.Player.ActorNumber);
+        var maxPlayers = PhotonNetwork.CurrentRoom.PlayerCount;
+        foreach (var player in playersInRoom)
+        {
+            if (player.Player == PhotonNetwork.LocalPlayer)
+            {
+                break;
+            }
+            myNumber++;
+        }
+
+        var camera = Camera.main;
+        var circleRadius = camera.orthographicSize;
+        int playerCounter = 1;
+        foreach (var player in playersInRoom)
+        {
+            // Determin the position of the player in the circle
+            int baseNumber = (maxPlayers - myNumber + playerCounter++);
+            int position = baseNumber - maxPlayers <= 0 ? baseNumber : baseNumber - maxPlayers;
+
+            // Determine the eccentricity of the screen
+            Camera cam = Camera.main;
+            float minorAxis = cam.orthographicSize;
+            float majorAxis = minorAxis * cam.aspect;
+
+            Debug.Log($"Creating player {player.Player.NickName} with actor number {player.Player.ActorNumber}");
+
+            var photonPlayer = players.FindPlayerByNetworkPlayer(player.Player);
+            DeterminePlayerPosition(position, numOfPlayers, minorAxis, majorAxis, out float angle, out float x, out float y);
+            player.transform.position = new Vector3(x, y);
+            player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
+        }
+    }
     private void FixupCardsPerColor()
     {
         // We should only add custom cards when it's time...
@@ -625,7 +668,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     // Update is called once per frame
     void Update()
     {
-
+        Vector2 screenSize = new Vector2(Screen.width, Screen.height);
+        if (lastScreenSize != screenSize)
+        {
+            lastScreenSize = screenSize;
+            RepoisitionGamePlayers();
+        }
     }
 
     /// <summary>
@@ -633,20 +681,26 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     private static T PlaceInCircle<T>(Transform centerOfScreen, GameObject prefab, int itemNumber, int totalObjects, float minorAxis, float majorAxis) where T : MonoBehaviour
     {
-        // The local player will always be at 3pi/2 (270 degrees) on the circle
-        // This is the bottom of the player screen. All others will be situated around the circle
-
-        float degrees270 = (Mathf.PI * 3) / 2;
-        float angle = ((itemNumber - 1) * Mathf.PI * 2) / totalObjects;
-        float angleOncircle = degrees270 + angle;
-        float x = majorAxis * Mathf.Cos(angleOncircle);
-        float y = minorAxis * Mathf.Sin(angleOncircle);
-        Debug.Log($"Player (x,y) coordinate = ({x},{y})");
-        Debug.Log($"Player angle on circle = {angleOncircle * Mathf.Rad2Deg}");
+        float angle, x, y;
+        DeterminePlayerPosition(itemNumber, totalObjects, minorAxis, majorAxis, out angle, out x, out y);
         GameObject playerInstantiate = Instantiate(prefab, new Vector3(x, y), Quaternion.LookRotation(Vector3.zero, Vector3.up), centerOfScreen);
         var player = playerInstantiate.GetComponent<T>();
         player.transform.eulerAngles = Vector3.forward * Mathf.Rad2Deg * angle;
         return player;
+    }
+
+    private static void DeterminePlayerPosition(int itemNumber, int totalObjects, float minorAxis, float majorAxis, out float angle, out float x, out float y)
+    {
+        // The local player will always be at 3pi/2 (270 degrees) on the circle
+        // This is the bottom of the player screen. All others will be situated around the circle
+
+        float degrees270 = (Mathf.PI * 3) / 2;
+        angle = ((itemNumber - 1) * Mathf.PI * 2) / totalObjects;
+        float angleOncircle = degrees270 + angle;
+        x = majorAxis * Mathf.Cos(angleOncircle);
+        y = minorAxis * Mathf.Sin(angleOncircle);
+        Debug.Log($"Player (x,y) coordinate = ({x},{y})");
+        Debug.Log($"Player angle on circle = {angleOncircle * Mathf.Rad2Deg}");
     }
 
     /// <summary>
@@ -694,90 +748,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             return cardAction;
         }
         return GameAction.NextPlayer;
-    }
-
-    /// <summary>
-    /// When a network player updates the room properties we will play the game as expected
-    /// </summary>
-    /// <param name="propertiesThatChanged">A list of properties from Photon</param>
-    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
-    {
-        try
-        {
-            var cardStringCheck = propertiesThatChanged?[Constants.CardToPlay] ?? "NULL";
-            var cardColorCheck = propertiesThatChanged?[Constants.CardColor] ?? "NULL";
-            var cardWildColorCheck = propertiesThatChanged?[Constants.CardWildColor] ?? "NULL";
-            var cardValueCheck = propertiesThatChanged?[Constants.CardValue] ?? "NULL";
-            var updateGuid = propertiesThatChanged?[Constants.UpdateGuid] ?? "NULL";
-
-            Debug.Log("");
-            Debug.Log($"Room properties updated at {DateTime.Now}");
-            Debug.Log($"Room properties update guid {updateGuid}");
-            Debug.Log($"cardString = {cardStringCheck}\tcardColor = {cardColorCheck}\tcardWildColor = {cardWildColorCheck}\tcardValue = {cardValueCheck}");
-
-            if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
-            {
-                var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
-                if (playerSending != null)
-                {
-                    var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
-                    string cardColor = (string)propertiesThatChanged?[Constants.CardColor];
-                    string cardWildColor = (string)propertiesThatChanged?[Constants.CardWildColor];
-                    string cardValue = (string)propertiesThatChanged?[Constants.CardValue];
-                    Debug.Log($"Found player {playerSending.Name}");
-                    var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay]);
-
-                    if (cardToPlay == null)
-                    {
-                        Debug.Log($"Card was NOT found in player's hand");
-                        // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
-                        if (dealDeck.PeekTopCard().CardRandom == (int)propertiesThatChanged?[Constants.CardToPlay])
-                        {
-                            cardToPlay = TakeFromDealPile();
-                            Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
-                            playerSending.AddCard(cardToPlay);
-                        }
-
-                        //TODO In the evnt this client is out of sync we need to resync
-                    }
-
-                    if (cardToPlay.Color == Card.CardColor.Wild)
-                    {
-                        // When we're here we need to make sure we honor the player's wild color choice
-                        Debug.Log($"Set {cardToPlay} to wild color {cardWildColor}");
-                        cardToPlay.SetWildColor(cardWildColor);
-                    }
-
-                    Debug.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
-                    cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
-                    GameLoop(cardToPlay, playerSending, true);
-
-                    // If the player has taken the last card the the discard deck is swapped
-                    // we will need to check and pull a new card.
-                    if (dealDeck.Count == 0)
-                    {
-                        Debug.Log($"Discard deck is empty.");
-                        discardDeck.AddCardToDeck(TakeFromDealPile(), true);
-                    }
-                }
-            }
-            else if (propertiesThatChanged.ContainsKey(Constants.RestartGameAfterWin))
-            {
-                Destroy(winnerBannerPrefabToDestroy);
-                ResetDecks();
-                StartGame();
-            }
-            Debug.Log("");
-            base.OnRoomPropertiesUpdate(propertiesThatChanged);
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
-        finally
-        {
-        }
-
     }
 
     [PunRPC]
@@ -861,6 +831,26 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     }
 
+    [PunRPC]
+    void RestartGame(Hashtable propertiesThatChanged)
+    {
+        try
+        {
+            Destroy(winnerBannerPrefabToDestroy);
+            ResetDecks();
+            StartGame();
+            Debug.Log("");
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        finally
+        {
+        }
+
+    }
+
     /// <summary>
     /// Performs the primary game mechanic of checking the cards and the player that is performing the action.
     /// </summary>
@@ -917,7 +907,9 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
 
         winnerBannerPrefabToDestroy = Instantiate(winnerBannerPrefab, transform);
+        winnerBannerPrefabToDestroy.name = Constants.WinnerPrefabName;
 
+        // Tally up the winner's score
         int score = 0;
         foreach (var item in players)
         {
@@ -934,52 +926,55 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         playerScore[player] += score;
 
+
+        // Get all of the buttons in the prefab
         var allButtons = winnerBannerPrefabToDestroy.GetComponentsInChildren<Button>(true);
 
+        Button exitApplication = null;
+        Button playerReady = null;
         Button leaveGame = null;
-        Button newGame = null;
+
 
         foreach (var item in allButtons)
         {
             switch (item.name)
             {
                 case "Exit":
-                    leaveGame = item;
+                    exitApplication = item;
                     break;
                 case "PlayAgain":
-                    newGame = item;
+                    playerReady = item;
+                    break;
+                case "LeaveGame":
+                    leaveGame = item;
                     break;
                 default:
                     break;
             }
         }
 
-        newGame.onClick.AddListener(() =>
+        // Add callbacks to these buttons
+        playerReady.onClick.AddListener(() =>
         {
-            var s = Guid.NewGuid().ToString();
-            Debug.Log($"Calling UpdateRoomProperties with {s}");
-            var hashTable = new ExitGames.Client.Photon.Hashtable
-            {
-                [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
-                [Constants.RestartGameAfterWin] = true,
-            };
-            photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllViaServer, hashTable);
+            PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable { [Constants.PlayerReady] = true });
+            playerReady.interactable = false;
+
         });
 
-        leaveGame.onClick.AddListener(() =>
+        exitApplication.onClick.AddListener(() =>
         {
             Application.Quit();
         });
 
-        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.Player.NickName, Score = scores.Value, PointsGiven = scores.Key.ScoreHand() };
+        leaveGame.onClick.AddListener(() =>
+        {
+            PhotonNetwork.LeaveRoom();
+            SceneManager.LoadScene("CreateGame", LoadSceneMode.Single);
+        });
 
+        // Generate WinnerBanner
         var allTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
         TextMeshProUGUI winnerBanner = null;
-        TextMeshProUGUI playerNameScoreCard = null;
-        TextMeshProUGUI dotsScoreCard = null;
-        TextMeshProUGUI playerScoreScoreCard = null;
-        TextMeshProUGUI pointsGivenScoreCard = null;
-
 
         foreach (var item in allTextMesh)
         {
@@ -988,6 +983,39 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 case "WinnerBanner":
                     winnerBanner = item;
                     break;
+                default:
+                    break;
+            }
+        }
+
+        winnerBanner.text = $"{player.name} WINS!";
+
+        // Generate score card
+        GenerateScoreCard();
+
+        audioSource.clip = playerWin;
+        audioSource.Play();
+
+        stopGame = true;
+    }
+
+    private void GenerateScoreCard()
+    {
+        // Create the scorecard list
+        var orderedScore = from scores in playerScore orderby scores.Value descending select new { Name = scores.Key.Player.NickName, Score = scores.Value, PointsGiven = scores.Key.ScoreHand(), Ready = scores.Key.Player.CustomProperties.ContainsKey(Constants.PlayerReady) };
+
+        // Get all text in the banner prefab
+        var scoreCardTextMesh = winnerBannerPrefabToDestroy.GetComponentsInChildren<TextMeshProUGUI>(true);
+
+        TextMeshProUGUI playerNameScoreCard = null;
+        TextMeshProUGUI dotsScoreCard = null;
+        TextMeshProUGUI playerScoreScoreCard = null;
+        TextMeshProUGUI pointsGivenScoreCard = null;
+
+        foreach (var item in scoreCardTextMesh)
+        {
+            switch (item.name)
+            {
                 case "PlayerNames":
                     playerNameScoreCard = item;
                     break;
@@ -1005,39 +1033,37 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
+        // We will create text buffers and append the strings. No need to optimize since we're typically dealing with less than 10 strings.
         var playerNameBuffer = string.Empty;
         var playerScoreBuffer = string.Empty;
         var dotsBuffer = string.Empty;
         var pointsGivenBuffer = string.Empty;
 
-
-        winnerBanner.text = $"{player.name} WINS!";
-
         foreach (var item in orderedScore)
         {
-            string pointsGiven = 
+            // We will want to display a "ready" prompt next to the score so we can indicate who's left
+            string playerReady = string.Empty;
+            if (item.Ready)
+            {
+                playerReady = " (ready)";
+            }
             playerNameBuffer += $"{item.Name}\n";
             dotsBuffer += ".........\n";
             playerScoreBuffer += $"{item.Score}\n";
-            pointsGivenBuffer += item.PointsGiven == 0 ? "\n" : $"(+{item.PointsGiven})\n";
+            pointsGivenBuffer += item.PointsGiven == 0 ? $"{playerReady}\n" : $"(+{item.PointsGiven}){playerReady}\n";
         }
 
         playerNameScoreCard.text = playerNameBuffer;
         dotsScoreCard.text = dotsBuffer;
         playerScoreScoreCard.text = playerScoreBuffer;
         pointsGivenScoreCard.text = pointsGivenBuffer;
-
-        audioSource.clip = playerWin;
-        audioSource.Play();
-
-        stopGame = true;
     }
 
     private void CallPUNRpc(Card c, LocalPlayer player)
     {
         var s = Guid.NewGuid().ToString();
         Debug.Log($"Calling UpdateRoomProperties with {s}");
-        var hashTable = new ExitGames.Client.Photon.Hashtable
+        var hashTable = new Hashtable
         {
             [Constants.PlayerSendingMessage] = player.Player.ActorNumber,
             [Constants.CardToPlay] = c.CardRandom,
@@ -1142,5 +1168,52 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         audioSource.clip = clipToPlay;
         audioSource.Play();
 
+    }
+
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    {
+        GenerateScoreCard();
+        CheckAndStartGame();
+        base.OnPlayerPropertiesUpdate(targetPlayer, changedProps);
+    }
+
+    private static bool CheckAllPlayersAreReady()
+    {
+        bool allPlayersReady = true;
+        if (PhotonNetwork.CurrentRoom.Players.Count == 1)
+        {
+            return false;
+        }
+        foreach (var item in PhotonNetwork.CurrentRoom.Players)
+        {
+            if (item.Value.CustomProperties.ContainsKey(Constants.PlayerReady))
+            {
+                allPlayersReady &= true;
+            }
+            else
+            {
+                allPlayersReady &= false;
+            }
+        }
+
+        return allPlayersReady;
+    }
+
+    private void CheckAndStartGame()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (CheckAllPlayersAreReady())
+            {
+                var s = Guid.NewGuid().ToString();
+                Debug.Log($"Calling UpdateRoomProperties with {s}");
+                var hashTable = new Hashtable
+                {
+                    [Constants.PlayerSendingMessage] = PhotonNetwork.LocalPlayer.ActorNumber,
+                    [Constants.RestartGameAfterWin] = true,
+                };
+                photonView.RPC("RestartGame", RpcTarget.AllViaServer, hashTable);
+            }
+        }
     }
 }
