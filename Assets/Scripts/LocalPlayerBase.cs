@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public abstract class LocalPlayerBase<T> : MonoBehaviour
@@ -15,6 +16,8 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public event EventHandler<Card> HandChangedEvent;
 
+    public bool CalledUno { get; private set; } = false;
+    public bool HasBeenChallenged { get; private set; } = false;
 
 
     /// <summary>
@@ -62,9 +65,9 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// Creates a new player instance.
     /// </summary>
     /// <param name="name">The name of the player.</param>
-    public void SetName(string name)
+    public virtual void SetName(string name, string additionalDetails)
     {
-        this.Name = name;
+        Name = name;
         this.name = name;
     }
 
@@ -82,7 +85,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     {
         if (myCard.CanPlay(cardToPlayAgainst))
         {
-            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            // Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
             if (removeFromHand)
             {
                 RemoveCard(myCard);
@@ -100,12 +103,17 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     protected void HandChanged(object sender, Card card)
     {
+        if (Hand.Count > 1)
+        {
+            CalledUno = false;
+            HasBeenChallenged = false;
+        }
         FixupCardPositions();
     }
 
     public virtual void RemoveCard(Card cardToRemove)
     {
-        Debug.Log($"Removing {cardToRemove} from {this.Name} hand");
+        // Debug.Log($"Removing {cardToRemove} from {this.Name} hand");
         Hand.Remove(cardToRemove);
         HandChangedEvent(this, cardToRemove);
     }
@@ -135,7 +143,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
-        Debug.Log($"Adding card {cardToAdd} for {this.Name}");
+        // Debug.Log($"Adding card {cardToAdd} for {this.Name}");
         this.Hand.Add(cardToAdd);
         HandChangedEvent(this, cardToAdd);
     }
@@ -143,14 +151,14 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// <summary>
     /// Take all of the cards that are in our hand and parent them to us. As well we should place them in a pattern
     /// </summary>
-    protected virtual void FixupCardPositions()
+    public virtual void FixupCardPositions()
     {
         var cardsToDisplay = Hand.ToArray();
         int numberOfCardsInHand = cardsToDisplay.Length;
         Array.Sort(cardsToDisplay);
 
         // We should only fixup the positions when a card is added or 
-        Debug.Log($"Fixing up card positions for {this.Name}");
+        // Debug.Log($"Fixing up card positions for {this.Name}");
 
         if (startingPosition.Equals(Vector3.negativeInfinity))
         {
@@ -170,29 +178,33 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         float cardNumber = 0.0f;
         foreach (var cardToAdd in cardsToDisplay)
         {
-            // There should only be 5 cards in each row
-            if (itemNumber > 0 && itemNumber % MaxNumberOfCardsInRow == 0)
+            // If the card is "in-flight" it's being animated and we want to not fix up the position until it's done
+            if (!cardToAdd.IsInFlight)
             {
-                itemNumber = 0;
-                rowNumber++;
-            }
+                // There should only be 5 cards in each row
+                if (itemNumber > 0 && itemNumber % MaxNumberOfCardsInRow == 0)
+                {
+                    itemNumber = 0;
+                    rowNumber++;
+                }
 
-            // Increase the z-order for every row sligthly so we can see them overlap
-            cardNumber += rowNumber * -0.01f;
+                // Increase the z-order for every row sligthly so we can see them overlap
+                cardNumber += rowNumber * -0.01f;
 
-            if (cardToAdd.tag == "Dimmable")
-            {
-                var allCards = cardToAdd.GetComponent<SpriteRenderer>();
-                var width = allCards.bounds.size.x;
-                float cardsStartingPosition = ((cardsStartingPositionBase + width) * -0.5f) + (width * 0.5f);
-                cardNumber -= zOrderSpacing;
-                cardToAdd.transform.SetParent(this.transform);
+                if (cardToAdd.tag == "Dimmable")
+                {
+                    var allCards = cardToAdd.GetComponent<SpriteRenderer>();
+                    var width = allCards.bounds.size.x;
+                    float cardsStartingPosition = ((cardsStartingPositionBase + width) * -0.5f) + (width * 0.5f);
+                    cardNumber -= zOrderSpacing;
+                    cardToAdd.transform.SetParent(this.transform);
 
-                cardToAdd.transform.localPosition = new Vector3(
-                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
-                    rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
-                    cardNumber);
-                cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+                    cardToAdd.transform.localPosition = new Vector3(
+                        rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (cardsStartingPosition + (itemNumber++ * horizontalSpacing)),
+                        rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
+                        cardNumber);
+                    cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+                }
             }
         }
     }
@@ -236,7 +248,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public virtual void DimCards(bool dim)
     {
-        Debug.Log($"Dimming cards for {this.Name}");
+        // Debug.Log($"Dimming cards for {this.Name}");
         foreach (var item in Hand)
         {
             if (item.tag == "Dimmable")
@@ -288,4 +300,26 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         }
         Hand.Clear();
     }
+
+    public bool CanBeChallengedForUno()
+    {
+        if (!HasBeenChallenged && Hand.Count == 1)
+        {
+            HasBeenChallenged = true;
+            return true;
+        }
+        return false;
+    }
+
+    public virtual bool CanCallUno(Card cardToCheck)
+    {
+        if (Hand.Count == 2 && Hand.Any(c => c.CanPlay(cardToCheck)))
+        {
+            CalledUno = true;
+        }
+        return CalledUno;
+    }
+
+ 
+
 }

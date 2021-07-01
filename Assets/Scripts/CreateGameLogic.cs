@@ -23,6 +23,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
         //Calls the TaskOnClick/TaskWithParameters/ButtonClicked method when you click the Button
         createGameButton.onClick.AddListener(JoinGameButton);
+        createGameButton.interactable = false;
         if (Application.isEditor)
         {
             Debug.Log("Running expected random seed from editor.");
@@ -44,6 +45,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         var msgText = $"Connected: {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})";
         var msg = connectedMessage.GetComponent<TMPro.TMP_Text>();
         msg.text = string.Format(msgText, msgText);
+        createGameButton.interactable = true;
         base.OnConnected();
         
     }
@@ -56,8 +58,13 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
 
     public override void OnDisconnected(DisconnectCause cause)
     {
-        Debug.Log($"Disconnected from {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})\r\n{cause}");
-        
+        createGameButton.interactable = false;
+        var msg = errorMessage.GetComponent<TMPro.TMP_Text>();
+        var msgText = $"Disconnected from {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})\r\n{cause}";
+        msg.text = msgText;
+        errorMessage.SetActive(true);
+        Debug.Log(msgText);
+        PhotonNetwork.ConnectUsingSettings();
     }
 
     public override void OnCreatedRoom()

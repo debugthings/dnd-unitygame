@@ -18,6 +18,8 @@ namespace Assets.Scripts
         public static string GameStarted => "gameStarted";
         public static string RestartGameAfterWin => "RestartGameAfterWin";
         public static string PlayerReady => "PlayerReady";
+        public static string PlayerGameLoaded => "PlayerGameLoaded";
         public static string WinnerPrefabName => "WinnerPrefabName";
+        public static string PlayerCalledUno => "WinnerPrefabName";
     }
 }
