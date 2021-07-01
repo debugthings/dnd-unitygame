@@ -13,11 +13,11 @@ using Assets.Scripts;
 using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
+using System.Collections.Concurrent;
 
 public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
 
-    private PhotonView photonViewCache;
 
     private const float cardStackZOrderOffset = 0.01f;
 
@@ -30,11 +30,21 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private GameOptions gameOptions;
 
+    private Toggle playerToggle;
+    private Button unoButton;
+    private Button challengeButton;
+    private bool playerChallenge = false;
+    private Queue<LocalPlayerBase<Player>> playerUno = new Queue<LocalPlayerBase<Player>>();
+
+
     private int numOfPlayers = 4;
     private int numberOfDecks = 1;
 
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private IDictionary<LocalPlayerBase<Player>, int> playerScore = new Dictionary<LocalPlayerBase<Player>, int>();
+
+    // Used for our animations to and from the deck.
+    private ConcurrentDictionary<UnityEngine.Object, Tuple<LocalPlayerBase<Player>, CardDeck>> cardTransformDictionary = new ConcurrentDictionary<UnityEngine.Object, Tuple<LocalPlayerBase<Player>, CardDeck>>();
 
     // All prefabs for this gameboard
     private GameObject cardPrefab;
@@ -48,11 +58,16 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     // Used to calculate screen resize events
     private Vector2 lastScreenSize;
 
+    private LocalPlayerBase<Player> lastPlayer;
+
+    private float maxDistance;
+
     // The two decks that handle cards
     public CardDeck dealDeck;
     public CardDeck discardDeck;
 
-    public Toggle playerToggle;
+    // The banner that says what just happened in the game
+    public TextMeshProUGUI playerLog;
 
     // These are objects that are created on the fly so we want to load the asset from the asset store
     public AssetReference playerReference;
@@ -77,24 +92,18 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private bool gameStarted = false;
 
-    private static SemaphoreSlim _gamelock = new SemaphoreSlim(0);
+    public float cardDealSpeed;
 
 
     // Start is called before the first frame update
     async void Start()
     {
-        playerToggle.onValueChanged.AddListener(delegate
-        {
-            TogglePlayableDimming();
-        });
-
         // TODO Initialize a please wait here.
         if (PhotonNetwork.IsConnectedAndReady)
         {
             await InitializeAssetsAndPlayers();
             StartGame();
         }
-
     }
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
@@ -179,6 +188,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         base.OnJoinRoomFailed(returnCode, message);
     }
 
+    private void UpdateLog(string textToUpdate)
+    {
+        playerLog.text = textToUpdate;
+    }
+
     private void ResetDecks()
     {
         dealDeck.ClearDeck();
@@ -189,13 +203,15 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
     }
 
-    private void StartGame()
+    private async void StartGame()
     {
         gameStarted = true;
         stopGame = false;
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerReady] = null });
-        
+
+        UpdateLog("Please wait while all players sync.");
+
         // What we want to do here is have a game where the number of decks is in some multiple of the number of players
         // However in the event that we have n-(n/2) > 2 players that would trigger a new deck, we should opt to increase the number of decks.
         // For example, if we have 4 players per deck and the game has 7 players, we should add another deck to be sure.
@@ -262,6 +278,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // Player next to the master player
         Player nextToDealer = default;
 
+        // Set the player order to be forward always
+        players.Forward();
         // For each player in the player list find the one that is next to the dealer.
         foreach (var item in PhotonNetwork.PlayerList)
         {
@@ -281,8 +299,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             for (int j = 0; j < numOfPlayers; j++)
             {
                 // The circular list allows us to start dealing from the "first" position
-                players.Current().AddCard(TakeFromDealPile());
+                var cardToDeal = TakeFromDealPile();
+                var currentPlayer = players.Current();
+                AnimateCardFromDealDeckToPlayer(cardToDeal, currentPlayer);
+                currentPlayer.AddCard(cardToDeal);
                 players.Next();
+                await BlockOnCardFlight(cardToDeal);
             }
         }
 
@@ -297,16 +319,127 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         Debug.Log("Play top card");
         PutCardOnDiscardPile(TakeFromDealPile(), true, true);
+
+        // When we're here we know htat we're not actively animating the card loads and the game should execute at about the same pace.
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerGameLoaded] = true });
+
+        while (CheckAllPlayersAreGameReady())
+        {
+            await Task.Delay(20);
+        }
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerGameLoaded] = null });
+
         // There are a couple of rules on the first play
         // If it's a wild the first player chooses the color.
         // If it's a wild draw four the card goes back into the pile.
+        FirstPlay(players.Current());
 
         TogglePlayableDimming();
 
 
-        FirstPlay(players.Current());
-
         Debug.Log("Leaving Start()");
+    }
+
+    private static async Task BlockOnCardFlight(Card cardToDeal)
+    {
+        while (cardToDeal.IsInFlight)
+        {
+            await Task.Delay(20);
+        }
+    }
+
+    private void AnimateCardFromDealDeckToPlayer(Card cardToDeal, LocalPlayerBase<Player> animatingPlayer, bool fromRPC = false)
+    {
+        cardToDeal.IsInFlight = true;
+        // Add a blank card to show the deal
+        if (!fromRPC && animatingPlayer is NetworkPlayer)
+        {
+            cardTransformDictionary.GetOrAdd(Instantiate(dimmableCardPrefab, transform), new Tuple<LocalPlayerBase<Player>, CardDeck>(animatingPlayer, dealDeck));
+        }
+        cardTransformDictionary.GetOrAdd(cardToDeal, new Tuple<LocalPlayerBase<Player>, CardDeck>(animatingPlayer, dealDeck));
+    }
+
+    private void AnimateCardFromPlayerToDiscardDeck(Card cardToDeal, LocalPlayerBase<Player> animatingPlayer)
+    {
+        cardToDeal.IsInFlight = true;
+        cardToDeal.transform.SetPositionAndRotation(animatingPlayer.transform.position, animatingPlayer.transform.rotation);
+        // Add a blank card to show the deal
+        cardTransformDictionary.GetOrAdd(cardToDeal, new Tuple<LocalPlayerBase<Player>, CardDeck>(animatingPlayer, discardDeck));
+    }
+
+    private void AnimateCardTransforms()
+    {
+        // Determine the eccentricity of the screen
+        Camera cam = Camera.main;
+        float minorAxis = cam.orthographicSize;
+        float majorAxis = minorAxis * cam.aspect;
+
+        float maxDistance = Vector2.Distance(new Vector2(0, 0), new Vector2(minorAxis, majorAxis));
+
+        foreach (var itemToMove in cardTransformDictionary.Keys)
+        {
+            if (cardTransformDictionary.ContainsKey(itemToMove))
+            {
+                Transform cardToMoveToTarget = null;
+
+                // The source can either be a Card object or a dimmable prefab (aka, the back of the card)
+                if (itemToMove is Card cardAsSource)
+                {
+                    cardToMoveToTarget = cardAsSource?.transform;
+                }
+                else if (itemToMove is GameObject blankCardAsSource)
+                {
+                    cardToMoveToTarget = blankCardAsSource?.transform;
+                }
+
+                var targetToCast = cardTransformDictionary[itemToMove];
+                Transform playerTarget = targetToCast.Item1.transform;
+                Transform deckTarget = targetToCast.Item2.transform;
+
+                bool isDealDeck = deckTarget.name.Equals("DealDeck", StringComparison.InvariantCultureIgnoreCase);
+
+                if (cardToMoveToTarget != null && playerTarget != null)
+                {
+                    var percentageOfMax = Mathf.Abs(Vector3.Distance(deckTarget.position, playerTarget.position)) / maxDistance;
+                    var targetTransform = playerTarget.transform;
+
+                    if (!isDealDeck)
+                    {
+                        targetTransform = deckTarget.transform;
+                    }
+
+                    // Move our position a step closer to the target.
+                    // To make sure someone with a REAAALLY large screen doesn't have a disadvantage when someone is using a small screen
+                    // In this example we'll do all of our animations based on the fact that speed/distance = the time to animate one distance
+                    float step = (percentageOfMax * cardDealSpeed) * Time.fixedDeltaTime; // calculate distance to move
+
+                    // Rotate the card two revolutions in a second
+                    float stepRotate = 720.0f * Time.fixedDeltaTime; // calculate distance to move
+                    cardToMoveToTarget.position = Vector3.MoveTowards(cardToMoveToTarget.position, targetTransform.transform.position, step);
+                    cardToMoveToTarget.rotation = Quaternion.RotateTowards(cardToMoveToTarget.rotation, targetTransform.transform.rotation, stepRotate);
+
+                    // Check if the position of the cube and sphere are approximately equal.
+                    if (Vector3.Distance(cardToMoveToTarget.position, targetTransform.position) < 0.001f)
+                    {
+                        // Swap the position of the cylinder.
+                        while (cardTransformDictionary.ContainsKey(itemToMove) && cardTransformDictionary.TryRemove(itemToMove, out var player))
+                        {
+                            if (itemToMove is Card cardToRelease)
+                            {
+                                cardToRelease.IsInFlight = false;
+                            }
+                            else if (itemToMove is GameObject cardToDestroy)
+                            {
+                                Destroy(cardToDestroy);
+                            }
+
+                            player.Item1.FixupCardPositions();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private async Task InitializeAssetsAndPlayers()
@@ -327,8 +460,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         {
             rand.InitState();
         }
-
-        photonViewCache = this.photonView;
 
         gameOptions = gameOptions ?? new GameOptions();
 
@@ -368,7 +499,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
         instantiatedCard.SetProps(randomValue, cardValue, cardColor);
         instantiatedCard.name = instantiatedCard.ToString();
-        Debug.Log($"Built {instantiatedCard.name}");
+        // Debug.Log($"Built {instantiatedCard.name}");
         dealDeck.AddCardToDeck(instantiatedCard, false);
     }
 
@@ -423,29 +554,35 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     private void FirstPlay(LocalPlayerBase<Player> player)
     {
-        var firstCard = dealDeck.PeekTopCard();
+        var firstCard = discardDeck.PeekTopCard();
+        Debug.Log($"First card value on first play {firstCard}");
         switch (firstCard.Value)
         {
             case Card.CardValue.Skip:
             case Card.CardValue.Reverse:
+            case Card.CardValue.DrawTwo:
                 Debug.Log($"Reverse on first play");
                 // If these actions are first we need to start the game loop since the first player will be skipped
                 PerformGameAction(firstCard, true);
-                GameLoop(Card.Empty, player);
-                break;
-            case Card.CardValue.DrawTwo:
-            case Card.CardValue.Wild:
-                Debug.Log($"Wild on first play");
-                // These are all valid cards that will be played on the first player.
-                PerformGameAction(firstCard, true);
+                GameLoop(Card.FirstPlay, player);
                 break;
             case Card.CardValue.DrawFour:
                 Debug.Log($"Draw four on first play");
                 // When we have a draw four we need to put it back into the deck.
-                dealDeck.PutCardBackInDeckInRandomPoisiton(discardDeck.TakeTopCard(), 3, 50);
+                var Draw4Card = discardDeck.TakeTopCard();
+                dealDeck.PutCardBackInDeckInRandomPoisiton(Draw4Card, 3, 50);
+
+                // Lets make sure we don't miraculously get another D4
+                var cardToCheck = dealDeck.PeekTopCard();
+                while (cardToCheck.Value == Card.CardValue.DrawFour)
+                {
+                    dealDeck.PutCardBackInDeckInRandomPoisiton(discardDeck.TakeTopCard(), 3, 50);
+                    cardToCheck = dealDeck.PeekTopCard();
+                }
                 discardDeck.AddCardToDeck(dealDeck.TakeTopCard(), true);
                 break;
             default:
+                UpdateLog($"First play to {player.Name}!");
                 break;
         }
     }
@@ -459,8 +596,10 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// Called from the mouse handler to play the actual card. In here we'll handle what happens when a wild card is shown.
     /// </summary>
     /// <param name="cardObject"></param>
-    public void PlayClickedCard(Card cardObject)
+    public async void PlayClickedCard(Card cardObject)
     {
+        await DelayOnPlayerChallenge();
+
         Debug.Log("");
         Debug.Log("Entered PlayClickedCard");
         if (PlayerCanMakeMove())
@@ -482,6 +621,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     LocalPlayer.AddCard(cardToPlay);
                 }
             }
+
             if (cardDeck is CardDeck && cardDeck.name == "DiscardDeck")
             {
                 Debug.Log($"Player double clicked the discard deck, do nothing.");
@@ -509,6 +649,14 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         Debug.Log("Left PlayClickedCard");
         Debug.Log("");
+    }
+
+    private async Task DelayOnPlayerChallenge()
+    {
+        while (playerChallenge)
+        {
+            await Task.Delay(20);
+        }
     }
 
     private void HandleWildCard(Card cardToPlay)
@@ -541,19 +689,18 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             myNumber++;
         }
 
-        var camera = Camera.main;
-        var circleRadius = camera.orthographicSize;
         int playerCounter = 1;
+
+        // Determine the eccentricity of the screen
+        Camera cam = Camera.main;
+        float minorAxis = cam.orthographicSize;
+        float majorAxis = minorAxis * cam.aspect;
+
         foreach (var player in playersInRoom)
         {
             // Determin the position of the player in the circle
             int baseNumber = (maxPlayers - myNumber + playerCounter++);
             int position = baseNumber - maxPlayers <= 0 ? baseNumber : baseNumber - maxPlayers;
-
-            // Determine the eccentricity of the screen
-            Camera cam = Camera.main;
-            float minorAxis = cam.orthographicSize;
-            float majorAxis = minorAxis * cam.aspect;
 
             // Scale down when over a specific size
             var scale = numOfPlayers >= 6 ? 0.75 : 1;
@@ -567,7 +714,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 var ply = PlaceInCircle<NetworkPlayer>(transform, computerPlayerPrefab, position, numOfPlayers, minorAxis, majorAxis);
                 ply.Player = player.Value;
                 ply.CurrentGame = this;
-                ply.SetName(player.Value.NickName);
+                ply.SetName(player.Value.NickName, "0");
                 ply.DimmableCardObject = dimmableCardPrefab;
                 ply.MaxNumberOfCardsInRow = maxNumberOfCards;
                 ply.transform.localScale = 0.5f * Vector3.one;
@@ -580,12 +727,51 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 var ply = PlaceInCircle<LocalPlayer>(transform, playerPrefab, position, numOfPlayers, minorAxis, majorAxis);
                 ply.Player = player.Value;
                 ply.CurrentGame = this;
-                ply.SetName(player.Value.NickName);
+                ply.SetName(player.Value.NickName, string.Empty);
                 LocalPlayer = ply;
                 ply.SetNetworkPlayerObject(photonPlayer);
+
+                ply.HandChangedEvent += new EventHandler<Card>(delegate (object o, Card c)
+                {
+                    if (o is LocalPlayer playerToCheck)
+                    {
+                        if (playerToCheck.Hand.Count > 1)
+                        {
+                            Color whiteColor = Color.white;
+                            ChangeUnoButtonColor(whiteColor);
+                        }
+                    }
+                });
+
+                playerToggle = ply.dimmableCardToggle;
+                playerToggle.onValueChanged.AddListener(delegate
+                {
+                    TogglePlayableDimming();
+                });
+
+                challengeButton = ply.challengeButton;
+
+                challengeButton.onClick.AddListener(() =>
+                {
+                    photonView.RPC("ChallengePlay", RpcTarget.AllViaServer, LocalPlayer.Player);
+                });
+
+                unoButton = ply.unoButton;
+                unoButton.onClick.AddListener(() =>
+                {
+                    photonView.RPC("CallUno", RpcTarget.AllViaServer, ply.Player);
+                });
+
                 players.Add(ply);
             }
         }
+    }
+
+    private void ChangeUnoButtonColor(Color greenColor)
+    {
+        var buttonColors = unoButton.colors;
+        buttonColors.normalColor = greenColor;
+        unoButton.colors = buttonColors;
     }
 
     private void RepoisitionGamePlayers()
@@ -605,8 +791,11 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             myNumber++;
         }
 
-        var camera = Camera.main;
-        var circleRadius = camera.orthographicSize;
+        // Determine the eccentricity of the screen
+        Camera cam = Camera.main;
+        float minorAxis = cam.orthographicSize;
+        float majorAxis = minorAxis * cam.aspect;
+
         int playerCounter = 1;
         foreach (var player in playersInRoom)
         {
@@ -614,10 +803,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             int baseNumber = (maxPlayers - myNumber + playerCounter++);
             int position = baseNumber - maxPlayers <= 0 ? baseNumber : baseNumber - maxPlayers;
 
-            // Determine the eccentricity of the screen
-            Camera cam = Camera.main;
-            float minorAxis = cam.orthographicSize;
-            float majorAxis = minorAxis * cam.aspect;
+
 
             Debug.Log($"Creating player {player.Player.NickName} with actor number {player.Player.ActorNumber}");
 
@@ -629,6 +815,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     }
     private void FixupCardsPerColor()
     {
+        // We should only add custom cards when it's time...
+        cardValuesArray.Remove(Card.CardValue.FirstPlay);
         // We should only add custom cards when it's time...
         cardValuesArray.Remove(Card.CardValue.Custom);
         // There is only 1 zero per color...
@@ -665,8 +853,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         Vector2 screenSize = new Vector2(Screen.width, Screen.height);
         if (lastScreenSize != screenSize)
@@ -674,6 +861,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             lastScreenSize = screenSize;
             RepoisitionGamePlayers();
         }
+        AnimateCardTransforms();
     }
 
     /// <summary>
@@ -751,7 +939,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     }
 
     [PunRPC]
-    void SendMoveToAllPlayers(Hashtable propertiesThatChanged)
+    async void SendMoveToAllPlayers(Hashtable propertiesThatChanged)
     {
         try
         {
@@ -769,6 +957,18 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(Constants.PlayerSendingMessage) && propertiesThatChanged.ContainsKey(Constants.CardToPlay))
             {
                 var playerSending = players.Find(player => player.Player.ActorNumber == (int)propertiesThatChanged?[Constants.PlayerSendingMessage]);
+
+                lastPlayer = playerSending;
+
+                // The way the challenge works is it needs to be done before the next hand of play (move)
+                // The game loop executes from this RPC and we can consider this a negation of the uno queue
+                // Either someone challenged the player or they did not.
+                if (playerUno.Count > 0)
+                {
+                    // Do nothing here but clear the queue
+                    playerUno.Clear();
+                }
+
                 if (playerSending != null)
                 {
                     var cardString = (int)propertiesThatChanged?[Constants.CardToPlay];
@@ -786,10 +986,10 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                         {
                             cardToPlay = TakeFromDealPile();
                             Debug.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
+                            AnimateCardFromDealDeckToPlayer(cardToPlay, playerSending, true);
+                            await BlockOnCardFlight(cardToPlay);
                             playerSending.AddCard(cardToPlay);
                         }
-
-                        //TODO In the evnt this client is out of sync we need to resync
                     }
 
                     if (cardToPlay.Color == Card.CardColor.Wild)
@@ -812,12 +1012,6 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     }
                 }
             }
-            else if (propertiesThatChanged.ContainsKey(Constants.RestartGameAfterWin))
-            {
-                Destroy(winnerBannerPrefabToDestroy);
-                ResetDecks();
-                StartGame();
-            }
             Debug.Log("");
             base.OnRoomPropertiesUpdate(propertiesThatChanged);
         }
@@ -837,9 +1031,71 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         try
         {
             Destroy(winnerBannerPrefabToDestroy);
+            UpdateLog(string.Empty);
             ResetDecks();
             StartGame();
-            Debug.Log("");
+            Debug.Log("Starting a new game!");
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        finally
+        {
+        }
+
+    }
+
+    [PunRPC]
+    void CallUno(Player playerToCallUno)
+    {
+        try
+        {
+            var unoCaller = players.FindPlayerByNetworkPlayer(playerToCallUno);
+            if (unoCaller.CanCallUno(discardDeck.PeekTopCard()))
+            {
+                // If we need to do something here we can
+            }
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        finally
+        {
+        }
+
+    }
+
+    [PunRPC]
+    void ChallengePlay(Player challengePlayer)
+    {
+        try
+        {
+            playerChallenge = true;
+            var localChallengePlayer = players.FindPlayerByNetworkPlayer(challengePlayer);
+            var playerToGetTwoCards = lastPlayer;
+
+            if (playerToGetTwoCards.CanBeChallengedForUno())
+            {
+                string message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and won! {playerToGetTwoCards.Name} draws two cards!";
+
+                // If the player remembered to click the uno button on the next play the the challenger gets the cards
+                if (playerToGetTwoCards.CalledUno)
+                {
+                    message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and lost! {localChallengePlayer.Name} draws two cards!";
+                    playerToGetTwoCards = localChallengePlayer;
+                }
+                // Someone is getting two cards...
+                for (int i = 0; i < 2; i++)
+                {
+                    playerToGetTwoCards.AddCard(TakeFromDealPile());
+                }
+
+                UpdateLog(message);
+            }
+            playerChallenge = false;
+
         }
         catch (Exception ex)
         {
@@ -856,15 +1112,22 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     /// <param name="c"></param>
     /// <param name="player"></param>
-    public void GameLoop(Card c, LocalPlayerBase<Player> player, bool calledRemotely = false)
+    public async void GameLoop(Card c, LocalPlayerBase<Player> player, bool calledRemotely = false)
     {
-
-        if (c != Card.Empty && player == players.Current() && !stopGame)
+        if (c != Card.Empty && c != Card.FirstPlay && player == players.Current() && !stopGame)
         {
             Debug.Log($"Card {c} is in the GameLoop");
+            AnimateCardFromPlayerToDiscardDeck(c, player);
+            await BlockOnCardFlight(c);
+            player.FixupCardPositions();
             PerformGameAction(c, false);
         }
+        else if (c != Card.FirstPlay)
+        {
+            UpdateLog($"{player.Name} did not draw a playable card! {players.PeekNext().Name} is next!");
+        }
 
+        // Every time we run a GameLoop we're confident that we need to check a winner or we need to move to the next player.
         if (player.CheckWin(players.Count))
         {
             ShowWin(player);
@@ -872,10 +1135,7 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         else
         {
             AdvanceNextPlayer();
-
         }
-
-
     }
 
     private void AdvanceNextPlayer()
@@ -1089,7 +1349,8 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // Take the player's card and put it on the discard pile. 
         GameAction ga = PutCardOnDiscardPile(c, false, false);
         Debug.Log($"Card {c} is in the Discard Pile");
-        if (c.Color == Card.CardColor.Wild)
+
+        if (c.Color == Card.CardColor.Wild && !firstPlay)
         {
             Debug.Log($"Card {c} is a wild card");
             c.SetProps(c.CardRandom, c.Value, c.WildColor);
@@ -1098,57 +1359,65 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var nextSound = rand.NextUInt(0, (uint)cardPlaySounds.Count);
         AudioClip clipToPlay = cardPlaySounds[(int)nextSound];
 
-
         switch (ga)
         {
             case GameAction.Reverse:
-                players.Reverse();
+                players.SwapDirections();
+
                 if (players.Count == 2)
                 {
-                    Debug.Log($"Two player game skipping {nextPlayer}!");
+                    UpdateLog($"{player.Name} played a {c}! Skipping {nextPlayer}!");
                     players.Next();
                 }
+
                 if (firstPlay)
                 {
-                    Debug.Log($"Reverse on draw moving in other direction, sorry {player.Name}, {players.PeekNext().Name} is first!");
-                    players.Next();
+                    UpdateLog($"Starting in reverse direction. {players.PeekNext().Name} is first!");
                 }
                 else
                 {
-                    Debug.Log($"{player.Name} reversed play, {players.PeekNext().Name} is next!");
+                    UpdateLog($"{player.Name} reversed play, {players.PeekNext().Name} is next!");
                 }
                 break;
+
             case GameAction.Skip:
                 if (firstPlay)
                 {
-                    Debug.Log($"{player.Name} was skipped on the first turn!");
+                    UpdateLog($"{player.Name} was skipped. {players.PeekNext().Name} is first!");
                 }
                 else
                 {
-                    Debug.Log($"{player.Name} skipped {nextPlayer.Name}!");
+                    UpdateLog($"{player.Name} skipped {nextPlayer.Name}!");
+                    players.Next();
                 }
-                players.Next();
                 break;
+
             case GameAction.DrawTwo:
-                Debug.Log($"{nextPlayer.Name} must Draw Two!");
                 for (int i = 0; i < 2; i++)
                 {
                     nextPlayer.AddCard(TakeFromDealPile());
                 }
-                Debug.Log($"Skipping {nextPlayer.Name}!");
-                players.Next();
+
+                if (firstPlay)
+                {
+                    UpdateLog($"Draw Two on first play! {nextPlayer.Name} takes 2 cards! {players.PeekNext().Name} starts!");
+                }
+                else
+                {
+                    UpdateLog($"{nextPlayer.Name} must Draw Two! Skipping {nextPlayer.Name}!");
+                    players.Next();
+                }
                 break;
             case GameAction.DrawFour:
-                Debug.Log($"{nextPlayer.Name} must Draw Four!");
                 for (int i = 0; i < 4; i++)
                 {
                     nextPlayer.AddCard(TakeFromDealPile());
                 }
-                Debug.Log($"Skipping {nextPlayer.Name}!");
+                UpdateLog($"{nextPlayer.Name} must Draw Four! Skipping {nextPlayer.Name}!");
                 players.Next();
                 break;
             case GameAction.DrawAndSkip:
-                Debug.Log($"{player.Name} chose DrawAndSkip!");
+                UpdateLog($"{player.Name} did not draw a playable card! {players.PeekNext().Name} is next!");
                 player.AddCard(TakeFromDealPile());
                 break;
             case GameAction.DrawAndPlayOnce:
@@ -1158,10 +1427,15 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 players.Prev();
                 break;
             case GameAction.Wild:
+                if (!firstPlay)
+                {
+                    UpdateLog($"{player.Name} played a {c.WildColor} Wild!");
+                }
                 break;
             case GameAction.NextPlayer:
             // In this case we just let it slide to the next player by using the loop.
             default:
+                UpdateLog($"{player.Name} played a {c}");
                 break;
         }
 
@@ -1172,8 +1446,12 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
     {
-        GenerateScoreCard();
-        CheckAndStartGame();
+        if (stopGame)
+        {
+            GenerateScoreCard();
+            CheckAndStartGame();
+        }
+
         base.OnPlayerPropertiesUpdate(targetPlayer, changedProps);
     }
 
@@ -1194,6 +1472,35 @@ public class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             {
                 allPlayersReady &= false;
             }
+        }
+
+        return allPlayersReady;
+    }
+
+    private bool CheckAllPlayersAreGameReady()
+    {
+        bool allPlayersReady = true;
+        int playersCount = 0;
+        if (PhotonNetwork.CurrentRoom.Players.Count == 1)
+        {
+            return false;
+        }
+        foreach (var item in PhotonNetwork.CurrentRoom.Players)
+        {
+            if (item.Value.CustomProperties.ContainsKey(Constants.PlayerGameLoaded))
+            {
+                allPlayersReady &= true;
+                playersCount++;
+            }
+            else
+            {
+                allPlayersReady &= false;
+            }
+        }
+
+        if (!allPlayersReady)
+        {
+            UpdateLog($"{playersCount} of {PhotonNetwork.CurrentRoom.Players.Count} are ready.");
         }
 
         return allPlayersReady;

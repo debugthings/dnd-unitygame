@@ -47,9 +47,19 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
 
     }
 
-    public new void Reverse()
+    public void SwapDirections()
     {
         _moveForward = !_moveForward;
+    }
+
+    public new void Reverse()
+    {
+        _moveForward = false;
+    }
+
+    public void Forward()
+    {
+        _moveForward = true;
     }
 
     /// <summary>
@@ -113,6 +123,28 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
 
     }
 
+    public T PeekPrev()
+    {
+        int nextPosition = position;
+        if (!_moveForward)
+        {
+            nextPosition = position + 1;
+            if (nextPosition >= this.Count)
+            {
+                nextPosition = 0;
+            }
+        }
+        else
+        {
+            nextPosition = position - 1;
+            if (nextPosition < 0)
+            {
+                nextPosition = Count - 1;
+            }
+        }
+        return this[nextPosition];
+
+    }
 
     /// <summary>
     /// The object at the current position in the list.

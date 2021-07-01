@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -19,8 +20,12 @@ public class Card : MonoBehaviour, IComparable<Card>
     private static object lockObject = new object();
     private static GameObject drawCardGameObject;
     private static GameObject emptyCardGameObject;
+    private static GameObject firstplayCardGameObject;
+    
 
     private Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
+
+    public bool IsInFlight { get; set; } = false;
 
     private bool showCarFace;
 
@@ -105,6 +110,19 @@ public class Card : MonoBehaviour, IComparable<Card>
                     emptyCardGameObject = new GameObject("Empty", typeof(Card));
                     Empty = emptyCardGameObject.GetComponent<Card>();
                     Empty.SetProps(int.MinValue + 1, CardValue.Empty, CardColor.Special);
+                }
+            }
+        }
+
+        if (firstplayCardGameObject == null)
+        {
+            lock (lockObject)
+            {
+                if (emptyCardGameObject == null)
+                {
+                    emptyCardGameObject = new GameObject("FirstPlay", typeof(Card));
+                    Empty = emptyCardGameObject.GetComponent<Card>();
+                    Empty.SetProps(int.MinValue + 1, CardValue.FirstPlay, CardColor.Special);
                 }
             }
         }
@@ -215,6 +233,7 @@ public class Card : MonoBehaviour, IComparable<Card>
     }
 
     public static Card Empty = null;
+    public static Card FirstPlay = null;
     public static Card DrawAndSkip = null;
 
     /// <summary>
@@ -253,7 +272,8 @@ public class Card : MonoBehaviour, IComparable<Card>
         Empty,
         DrawAndGoAgainOnce,
         DrawAndSkipTurn,
-        Custom
+        Custom,
+        FirstPlay
     }
 
     /// <summary>
@@ -281,7 +301,7 @@ public class Card : MonoBehaviour, IComparable<Card>
         this.CardRandom = cardRandom;
         this.Color = color;
         this.Value = value;
-        Debug.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
+        // Debug.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
         if (this.Color != CardColor.Special)
         {
             spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
@@ -289,7 +309,7 @@ public class Card : MonoBehaviour, IComparable<Card>
             spriteHandleBack.Completed += LoadCardBackSpriteToClass;
             AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
             spriteHandle.Completed += LoadCardFrontSpriteToClass;
-            Debug.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
+            // Debug.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
         }
     }
 
@@ -313,7 +333,7 @@ public class Card : MonoBehaviour, IComparable<Card>
     {
         if (Color == CardColor.Wild)
         {
-            Debug.Log($"Set wild color value of {this} {CardRandom} to {color}");
+            // Debug.Log($"Set wild color value of {this} {CardRandom} to {color}");
             WildColor = color;
         }
     }
