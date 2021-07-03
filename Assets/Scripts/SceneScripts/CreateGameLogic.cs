@@ -18,6 +18,9 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
     private byte playerNumbers = 10;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private int seedTicks = 0;
+
+    public static Guid g = Guid.NewGuid();
+
     void Start()
     {
         Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);

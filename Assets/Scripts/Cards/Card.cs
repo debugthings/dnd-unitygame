@@ -3,11 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class Card : MonoBehaviour, IComparable<Card>
+public class Card : CardAnimator, IComparable<Card>
 {
     private SpriteRenderer spriteRenderer;
     private const string spriteRoot = "Assets/Card Sprites/Uno_";
@@ -21,7 +22,7 @@ public class Card : MonoBehaviour, IComparable<Card>
     private static GameObject drawCardGameObject;
     private static GameObject emptyCardGameObject;
     private static GameObject firstplayCardGameObject;
-    
+
 
     private Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
 
@@ -96,7 +97,7 @@ public class Card : MonoBehaviour, IComparable<Card>
                 {
                     drawCardGameObject = new GameObject("DrawAndSkip", typeof(Card));
                     DrawAndSkip = drawCardGameObject.GetComponent<Card>();
-                    DrawAndSkip.SetProps(int.MinValue,CardValue.DrawAndSkipTurn, CardColor.Special);
+                    DrawAndSkip.SetProps(int.MinValue, CardValue.DrawAndSkipTurn, CardColor.Special);
                 }
             }
         }
@@ -233,7 +234,6 @@ public class Card : MonoBehaviour, IComparable<Card>
     }
 
     public static Card Empty = null;
-    public static Card FirstPlay = null;
     public static Card DrawAndSkip = null;
 
     /// <summary>
@@ -380,4 +380,5 @@ public class Card : MonoBehaviour, IComparable<Card>
         }
         return comparedValue;
     }
+
 }

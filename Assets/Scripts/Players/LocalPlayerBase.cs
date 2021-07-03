@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public abstract class LocalPlayerBase<T> : MonoBehaviour
@@ -85,7 +86,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     {
         if (myCard.CanPlay(cardToPlayAgainst))
         {
-            // Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
             if (removeFromHand)
             {
                 RemoveCard(myCard);
@@ -105,6 +106,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     {
         if (Hand.Count > 1)
         {
+            Debug.Log($"{Name} Hand count is greater than 1");
             CalledUno = false;
             HasBeenChallenged = false;
         }
@@ -262,6 +264,11 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public abstract void PlayerLeftGame();
 
+    public abstract Task<bool> AnimateCardToPlayer(Card cardToAnimate);
+
+    public abstract Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck);
+
+
     public int ScoreHand()
     {
         int score = 0;
@@ -303,23 +310,35 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public bool CanBeChallengedForUno()
     {
+        Debug.Log($"{Name} CanBeChallenged");
         if (!HasBeenChallenged && Hand.Count == 1)
         {
+            Debug.Log($"CanBeChallenged: HasBeenChallenged = {HasBeenChallenged}");
+            Debug.Log($"CanBeChallenged: Hand.Count = {Hand.Count}");
             HasBeenChallenged = true;
+            Debug.Log($"CanBeChallenged: return = true");
             return true;
         }
+        Debug.Log($"CanBeChallenged: return = false");
         return false;
     }
 
     public virtual bool CanCallUno(Card cardToCheck)
     {
-        if (Hand.Count == 2 && Hand.Any(c => c.CanPlay(cardToCheck)))
+        Debug.Log($"{Name} CanCallUno");
+        if (Hand.Count == 2 && Hand.Any(c =>
         {
+            Debug.Log($"CanCallUno: Check Card = {c} == {cardToCheck}");
+            return c.CanPlay(cardToCheck);
+        }))
+        {
+            Debug.Log($"CanCallUno: Hand.Count = {Hand.Count}");
             CalledUno = true;
         }
+        Debug.Log($"CanCallUno: CalledUno = {CalledUno}");
         return CalledUno;
     }
 
- 
+
 
 }

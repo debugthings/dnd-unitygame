@@ -21,5 +21,6 @@ namespace Assets.Scripts
         public static string PlayerGameLoaded => "PlayerGameLoaded";
         public static string WinnerPrefabName => "WinnerPrefabName";
         public static string PlayerCalledUno => "WinnerPrefabName";
+        public static string LastPlayerGUID => "LastPlayerGUID";
     }
 }

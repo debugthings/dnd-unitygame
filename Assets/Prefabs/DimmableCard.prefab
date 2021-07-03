@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5047736431174109224}
   - component: {fileID: 7414409199470901485}
+  - component: {fileID: 8057565511380682014}
   m_Layer: 0
   m_Name: DimmableCard
   m_TagString: Dimmable
@@ -81,3 +82,15 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &8057565511380682014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3842200367419983039}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a877323f0a252846804b8e81e0844e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
