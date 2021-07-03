@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -80,10 +81,10 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     {
         // Debug.Log($"Removing card for {this.Name}");
 
-        var allCards = dimmableCardList.FirstOrDefault();
-        if (allCards != null)
+        var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
+        if (dimmableCardToRemove != null)
         {
-            Destroy(allCards);
+            Destroy(dimmableCardToRemove);
             dimmableCardList.RemoveAt(0);
         }
         base.RemoveCard(cardToReturn);
@@ -188,9 +189,21 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     {
         if (base.CanCallUno(cardToCheck))
         {
+            Debug.Log($"{Name} Set Uno Title Active");
             UnoTitle.SetActive(true);
         }
         return CalledUno;
     }
 
+    public override Task<bool> AnimateCardToPlayer(Card cardToAnimate)
+    {
+        return cardToAnimate.AnimateToPosition(transform);
+    }
+
+    public override Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
+    {
+        var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
+        var cardAnimator = dimmableCardToRemove.GetComponent<CardAnimator>();
+        return cardAnimator.AnimateToPosition(discardDeck.transform);
+    }
 }

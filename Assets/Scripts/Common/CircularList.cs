@@ -28,7 +28,8 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
     /// <param name="startPosition">What element index to start from.</param>
     public void SetPosition(int startPosition)
     {
-        position = MathExtension.Clamp(startPosition, 0, Count - 1);
+        
+        position = UnityEngine.Mathf.Clamp(startPosition, 0, Count - 1);
     }
 
     public void SetPlayer(T player)
