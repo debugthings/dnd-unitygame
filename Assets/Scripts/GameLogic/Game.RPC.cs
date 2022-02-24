@@ -45,16 +45,24 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
             if (playerSending != null)
             {
-                CustomLogger.Log($"Found player {playerSending.Name}");
-                CustomLogger.Log($"cardRandom = {cardRandom}");
-                CustomLogger.Log($"dealDeck = {dealDeck.PeekTopCard().CardRandom}");
-                CustomLogger.Log($"dealDeck Card = {dealDeck.PeekTopCard()}");
+                // Log safely
+                try
+                {
+                    CustomLogger.Log($"Found player {playerSending.Name}");
+                    CustomLogger.Log($"cardRandom = {cardRandom}");
+                    CustomLogger.Log($"dealDeck = {dealDeck.PeekTopCard().CardRandom}");
+                    CustomLogger.Log($"dealDeck Card = {dealDeck.PeekTopCard()}");
+                }
+                catch (Exception)
+                {
+                }
 
                 var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == cardRandom);
 
                 if (cardToPlay == null)
                 {
                     CustomLogger.Log($"Card was NOT found in player's hand");
+
                     // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
                     if (dealDeck.PeekTopCard().CardRandom == cardRandom)
                     {
@@ -112,7 +120,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             PhotonNetwork.IsMessageQueueRunning = true;
         }
         CustomLogger.Log("Exit");
-        CustomLogger.Log("","");
+        CustomLogger.Log("", "");
     }
 
     [PunRPC]

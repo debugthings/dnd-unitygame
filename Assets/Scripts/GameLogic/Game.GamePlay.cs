@@ -49,7 +49,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         // Build the deck and create a random placement
         // Shuffling idea taken from https://blog.codinghorror.com/shuffling/
         // There are two sets of numbers and action cards per color per deck
-        for (int num = 0; num < (numberOfDecks * 2); num++)
+        for (int num = 0; num < (numberOfDecks * 1); num++)
         {
             for (int colorIndex = 0; colorIndex < cardColorArray.Length; colorIndex++)
             {
@@ -241,7 +241,6 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             CustomLogger.Log("Exit");
 
         }
-
     }
 
     /// <summary>
