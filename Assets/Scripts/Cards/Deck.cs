@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Assets.Scripts.Common;
 using UnityEngine;
 
 
@@ -39,7 +40,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     public bool StackGrowsDown { get; set; } = true;
 
-    public float StackZOrderDirection  => this.StackGrowsDown ? cardStackZOrderOffset : -cardStackZOrderOffset;
+    public float StackZOrderDirection => this.StackGrowsDown ? cardStackZOrderOffset : -cardStackZOrderOffset;
     public void AddCardToDeck(T c, bool showCardFace)
     {
         if (c != Card.Empty)
@@ -91,12 +92,16 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     public T TakeTopCard()
     {
-        return deck.Pop();
+        T cardToTake = deck.Pop();
+        CustomLogger.Log(cardToTake.ToString());
+        return cardToTake;
     }
 
     public T PeekTopCard()
     {
-        return deck.Peek();
+        T cardToTake = deck.Peek();
+        CustomLogger.Log(cardToTake.ToString());
+        return cardToTake;
     }
 
     public void Shuffle()
@@ -113,6 +118,11 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
             listToShuffle[i] = t;
         }
         deck = new Stack<T>(listToShuffle);
+        foreach (var item in deck)
+        {
+            CustomLogger.Log($"Rand: {item.CardRandom} Card: {item}");
+
+        }
         RepositionAllCards();
     }
 
@@ -200,12 +210,12 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         }
     }
 
-    public void ClearDeck() 
+    public void ClearDeck()
     {
         foreach (var item in deck)
         {
             Destroy(item.gameObject);
         }
-        deck.Clear(); 
+        deck.Clear();
     }
 }

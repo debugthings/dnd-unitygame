@@ -1,4 +1,5 @@
-﻿using Photon.Realtime;
+﻿using Assets.Scripts.Common;
+using Photon.Realtime;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -106,7 +107,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     {
         if (Hand.Count > 1)
         {
-            Debug.Log($"{Name} Hand count is greater than 1");
+            CustomLogger.Log($"{Name} Hand count is greater than 1");
             CalledUno = false;
             HasBeenChallenged = false;
         }
@@ -264,9 +265,9 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public abstract void PlayerLeftGame();
 
-    public abstract Task<bool> AnimateCardToPlayer(Card cardToAnimate);
+    public abstract bool AnimateCardToPlayer(Card cardToAnimate);
 
-    public abstract Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck);
+    public abstract bool AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck);
 
 
     public int ScoreHand()
@@ -310,32 +311,41 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public bool CanBeChallengedForUno()
     {
-        Debug.Log($"{Name} CanBeChallenged");
+        CustomLogger.Log("Enter");
+        CustomLogger.Log($"{Name}");
         if (!HasBeenChallenged && Hand.Count == 1)
         {
-            Debug.Log($"CanBeChallenged: HasBeenChallenged = {HasBeenChallenged}");
-            Debug.Log($"CanBeChallenged: Hand.Count = {Hand.Count}");
+            CustomLogger.Log($"CanBeChallenged: HasBeenChallenged = {HasBeenChallenged}");
+            CustomLogger.Log($"CanBeChallenged: Hand.Count = {Hand.Count}");
             HasBeenChallenged = true;
-            Debug.Log($"CanBeChallenged: return = true");
+            CustomLogger.Log($"CanBeChallenged: return = true");
             return true;
         }
-        Debug.Log($"CanBeChallenged: return = false");
+        CustomLogger.Log($"CanBeChallenged: return = false");
+        CustomLogger.Log("Enter");
         return false;
     }
 
     public virtual bool CanCallUno(Card cardToCheck)
     {
-        Debug.Log($"{Name} CanCallUno");
-        if (Hand.Count == 2 && Hand.Any(c =>
+        CustomLogger.Log($"Enter");
+        CustomLogger.Log($"{Name}");
+        // Allow a player to call Uno in two ways
+        // The first is pre-emptively when they have two cards and one is playable
+        // The second is if they have only one card
+        if ((Hand.Count == 2 && Hand.Any(c =>
         {
-            Debug.Log($"CanCallUno: Check Card = {c} == {cardToCheck}");
+            CustomLogger.Log($"CanCallUno: Check Card = {c} == {cardToCheck}");
             return c.CanPlay(cardToCheck);
-        }))
+        })) || Hand.Count == 1)
         {
-            Debug.Log($"CanCallUno: Hand.Count = {Hand.Count}");
+            CustomLogger.Log($"Hand.Count = {Hand.Count}");
             CalledUno = true;
-        }
-        Debug.Log($"CanCallUno: CalledUno = {CalledUno}");
+        } 
+
+        CustomLogger.Log($"CalledUno = {CalledUno}");
+        CustomLogger.Log($"Exit");
+
         return CalledUno;
     }
 

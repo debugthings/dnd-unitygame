@@ -1,4 +1,5 @@
-﻿using Photon.Realtime;
+﻿using Assets.Scripts.Common;
+using Photon.Realtime;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,7 +35,7 @@ public class LocalPlayer : LocalPlayerBase<Player>
     {
         if (base.CanCallUno(cardToCheck))
         {
-            Debug.Log($"{Name} Set Uno Button Green");
+            CustomLogger.Log($"{Name} Set Uno Button Green");
             Color greenColor = new Color(0.3f, 1.0f, 0.0f, 1.0f);
             ChangeUnoButtonColor(greenColor);
         }
@@ -48,12 +49,12 @@ public class LocalPlayer : LocalPlayerBase<Player>
         unoButton.colors = buttonColors;
     }
 
-    public override Task<bool> AnimateCardToPlayer(Card cardToAnimate)
+    public override bool AnimateCardToPlayer(Card cardToAnimate)
     {
         return cardToAnimate.AnimateToPosition(transform);
     }
 
-    public override Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
+    public override bool AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
     {
         return cardToAnimate.AnimateToPosition(discardDeck.transform);
 

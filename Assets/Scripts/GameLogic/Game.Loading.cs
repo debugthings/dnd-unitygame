@@ -92,6 +92,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         instantiatedCard.SetProps(randomValue, cardValue, cardColor);
         instantiatedCard.name = instantiatedCard.ToString();
         // Log($"Built {instantiatedCard.name}");
+        CustomLogger.Log($"Rand: {randomValue} Card: {instantiatedCard}");
         dealDeck.AddCardToDeck(instantiatedCard, false);
     }
 

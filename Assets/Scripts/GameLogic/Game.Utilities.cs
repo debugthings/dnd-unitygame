@@ -65,9 +65,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         return CurrentPlayer.Player == LocalPlayerReference.Player;
     }
 
-    private void UpdateLog(string textToUpdate)
+    private void UpdateLog(string textToUpdate, [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
     {
         playerLog.text = textToUpdate;
+        CustomLogger.Log(textToUpdate, memberName);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using Photon.Realtime;
+﻿using Assets.Scripts.Common;
+using Photon.Realtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -189,21 +190,21 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     {
         if (base.CanCallUno(cardToCheck))
         {
-            Debug.Log($"{Name} Set Uno Title Active");
+            CustomLogger.Log($"{Name} Set Uno Title Active");
             UnoTitle.SetActive(true);
         }
         return CalledUno;
     }
 
-    public override Task<bool> AnimateCardToPlayer(Card cardToAnimate)
+    public override bool AnimateCardToPlayer(Card cardToAnimate)
     {
-        return cardToAnimate.AnimateToPosition(transform);
+        return cardToAnimate?.AnimateToPosition(transform) ?? false;
     }
 
-    public override Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
+    public override bool AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
     {
-        var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
-        var cardAnimator = dimmableCardToRemove.GetComponent<CardAnimator>();
-        return cardAnimator.AnimateToPosition(discardDeck.transform);
+        var dimmableCardToRemove = dimmableCardList?.FirstOrDefault();
+        var cardAnimator = dimmableCardToRemove?.GetComponent<CardAnimator>();
+        return cardAnimator?.AnimateToPosition(discardDeck.transform) ?? false;
     }
 }

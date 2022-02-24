@@ -28,65 +28,65 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     }
 
     #region PUN RPC Calls
+
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    async void SendMoveToAllPlayers(int playerActorNumber, int cardRandom, Card.CardColor cardColor, Card.CardColor cardWildColor, Card.CardValue cardValue, string updateGuid)
+    void SendMoveToAllPlayers(int playerActorNumber, int cardRandom, Card.CardColor cardColor, Card.CardColor cardWildColor, Card.CardValue cardValue, string updateGuid)
     {
+        PhotonNetwork.IsMessageQueueRunning = false;
         try
         {
-
-            CustomLogger.Log("SendMoveToAllPlayers: Enter");
-            CustomLogger.Log($"SendMoveToAllPlayers: Room properties updated at {DateTime.Now}");
-            CustomLogger.Log($"SendMoveToAllPlayers: Room properties update guid {updateGuid}");
-            CustomLogger.Log($"SendMoveToAllPlayers: cardString = {cardRandom}\tcardColor = {cardColor}\tcardWildColor = {cardWildColor}\tcardValue = {cardValue}");
+            CustomLogger.Log("Enter");
+            CustomLogger.Log($"Room properties updated at {DateTime.Now}");
+            CustomLogger.Log($"Room properties update guid {updateGuid}");
+            CustomLogger.Log($"cardString = {cardRandom}\tcardColor = {cardColor}\tcardWildColor = {cardWildColor}\tcardValue = {cardValue}");
 
             var playerSending = lastPlayer = playerRotation.Find(player => player.Player.ActorNumber == playerActorNumber);
 
             if (playerSending != null)
             {
-                CustomLogger.Log($"SendMoveToAllPlayers: Found player {playerSending.Name}");
-                CustomLogger.Log($"SendMoveToAllPlayers: cardRandom = {cardRandom}");
-                CustomLogger.Log($"SendMoveToAllPlayers: dealDeck = {dealDeck.PeekTopCard().CardRandom}");
-                CustomLogger.Log($"SendMoveToAllPlayers: dealDeck Card = {dealDeck.PeekTopCard()}");
+                CustomLogger.Log($"Found player {playerSending.Name}");
+                CustomLogger.Log($"cardRandom = {cardRandom}");
+                CustomLogger.Log($"dealDeck = {dealDeck.PeekTopCard().CardRandom}");
+                CustomLogger.Log($"dealDeck Card = {dealDeck.PeekTopCard()}");
 
                 var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == cardRandom);
 
                 if (cardToPlay == null)
                 {
-                    CustomLogger.Log($"SendMoveToAllPlayers: Card was NOT found in player's hand");
+                    CustomLogger.Log($"Card was NOT found in player's hand");
                     // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
                     if (dealDeck.PeekTopCard().CardRandom == cardRandom)
                     {
-                        CustomLogger.Log($"SendMoveToAllPlayers: We were able to peek the card");
+                        CustomLogger.Log($"We were able to peek the card");
                         cardToPlay = TakeFromDealPile();
-                        CustomLogger.Log($"SendMoveToAllPlayers: Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
-
+                        CustomLogger.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
 
                         // If the card can be played do not add it to the player's hand since we don't want to reset the Uno flag
                         if (!cardToPlay.CanPlay(discardDeck.PeekTopCard()))
                         {
-                            CustomLogger.Log("SendMoveToAllPlayers: Added card to hand");
-                            await playerSending.AnimateCardToPlayer(cardToPlay);
+                            CustomLogger.Log("Added card to hand");
+                            playerSending.AnimateCardToPlayer(cardToPlay);
                             playerSending.AddCard(cardToPlay);
                             cardToPlay = Card.Empty;
                         }
                         else
                         {
-                            CustomLogger.Log("SendMoveToAllPlayers: Did not add card to hand");
+                            CustomLogger.Log("Did not add card to hand");
                         }
                     }
                 }
                 else
                 {
-                    CustomLogger.Log($"SendMoveToAllPlayers: Card was found in player's hand");
-                    CustomLogger.Log($"SendMoveToAllPlayers: Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+                    CustomLogger.Log($"Card was found in player's hand");
+                    CustomLogger.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
                     cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
                 }
 
                 if (cardToPlay.Color == Card.CardColor.Wild)
                 {
                     // When we're here we need to make sure we honor the player's wild color choice
-                    CustomLogger.Log($"SendMoveToAllPlayers: Set {cardToPlay} to wild color {cardWildColor}");
+                    CustomLogger.Log($"Set {cardToPlay} to wild color {cardWildColor}");
                     cardToPlay.SetWildColor(cardWildColor);
                 }
 
@@ -96,22 +96,23 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 // we will need to check and pull a new card.
                 if (dealDeck.Count == 0)
                 {
-                    CustomLogger.Log($"SendMoveToAllPlayers: Discard deck is empty.");
+                    CustomLogger.Log($"Discard deck is empty.");
                     discardDeck.AddCardToDeck(TakeFromDealPile(), true);
                 }
             }
-            CustomLogger.Log("SendMoveToAllPlayers: exit");
         }
         catch (Exception ex)
         {
-            CustomLogger.Log($"SendMoveToAllPlayers: {ex.StackTrace}");
-            CustomLogger.Log($"SendMoveToAllPlayers: {ex.Message}");
+            CustomLogger.Log($"{ex.StackTrace}");
+            CustomLogger.Log($"{ex.Message}");
             throw;
         }
         finally
         {
+            PhotonNetwork.IsMessageQueueRunning = true;
         }
-        CustomLogger.Log("SendMoveToAllPlayers: exit");
+        CustomLogger.Log("Exit");
+        CustomLogger.Log("","");
     }
 
     [PunRPC]
@@ -141,6 +142,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
     void CallUno(Player playerToCallUno)
     {
+        CustomLogger.Log("Enter");
         try
         {
             var unoCaller = playerRotation.FindPlayerByNetworkPlayer(playerToCallUno);
@@ -156,8 +158,8 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         finally
         {
+            CustomLogger.Log("Enter");
         }
-
     }
 
     [PunRPC]

@@ -119,7 +119,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 // The circular list allows us to start dealing from the "first" position
                 var cardToDeal = TakeFromDealPile();
                 var currentPlayer = playerRotation.Current();
-                await currentPlayer.AnimateCardToPlayer(cardToDeal);
+                currentPlayer.AnimateCardToPlayer(cardToDeal);
                 currentPlayer.AddCard(cardToDeal);
                 playerRotation.Next();
             }
@@ -158,12 +158,12 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// </summary>
     /// <param name="cardBeingPlayed"></param>
     /// <param name="playerMakingMove"></param>
-    public async void GameLoop(Card cardBeingPlayed, LocalPlayerBase<Player> playerMakingMove)
+    public void GameLoop(Card cardBeingPlayed, LocalPlayerBase<Player> playerMakingMove)
     {
         if (cardBeingPlayed != Card.Empty && playerMakingMove == playerRotation.Current() && !stopGame)
         {
             CustomLogger.Log($"Card {cardBeingPlayed} is in the GameLoop");
-            await playerMakingMove.AnimateCardToDiscardDeck(cardBeingPlayed, discardDeck);
+            playerMakingMove.AnimateCardToDiscardDeck(cardBeingPlayed, discardDeck);
             playerMakingMove.FixupCardPositions();
             PerformGameAction(cardBeingPlayed, false);
         }
@@ -221,17 +221,27 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// <returns></returns>
     public Card TakeFromDealPile()
     {
-        if (dealDeck.Count > 0)
+        CustomLogger.Log("Enter");
+        try
         {
-            return dealDeck.TakeTopCard();
+            if (dealDeck.Count > 0)
+            {
+                return dealDeck.TakeTopCard();
+            }
+            if (dealDeck.Count == 0 && discardDeck.Count > 1)
+            {
+                CustomLogger.Log($"Swapping decks");
+                dealDeck.SwapCardsFromOtherDeck(discardDeck);
+                return dealDeck.TakeTopCard();
+            }
+            return Card.Empty;
         }
-        if (dealDeck.Count == 0 && discardDeck.Count > 1)
+        finally
         {
-            CustomLogger.Log($"Swapping decks");
-            dealDeck.SwapCardsFromOtherDeck(discardDeck);
-            return dealDeck.TakeTopCard();
+            CustomLogger.Log("Exit");
+
         }
-        return Card.Empty;
+
     }
 
     /// <summary>
@@ -271,10 +281,9 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         try
         {
-            CustomLogger.Log("PlayClickedCard: Enter");
+            CustomLogger.Log("Enter");
             if (PlayerCanMakeMove())
             {
-                CustomLogger.Log("");
                 var cardDeck = cardObject.GetComponentInParent<CardDeck>();
                 var player = cardObject.GetComponentInParent<LocalPlayer>();
                 Card cardToPlay = Card.Empty;
@@ -287,16 +296,17 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
                     // the click originated from the player.
                     cardToPlay = TakeFromDealPile();
+                    CustomLogger.Log("Adding card to hand");
+                    LocalPlayerReference.AddCard(cardToPlay);
 
                     // If the card can't be played then we should add it to the hand.
                     if (cardToPlay != null && cardToPlay != Card.Empty && !cardToPlay.CanPlay(discardDeck.PeekTopCard()))
                     {
-                        CustomLogger.Log("PlayClickedCard: Adding card to hand");
-                        LocalPlayerReference.AddCard(cardToPlay);
+
                     }
                     else
                     {
-                        CustomLogger.Log("PlayClickedCard: Did not add card to hand.");
+                        CustomLogger.Log("Did not add card to hand.");
                     }
                 }
                 else if (player is LocalPlayer)
@@ -325,12 +335,12 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     }
                 }
             }
-            CustomLogger.Log("Left PlayClickedCard");
-            CustomLogger.Log("");
+            CustomLogger.Log("Exit");
+            CustomLogger.Log("", "");
         }
         catch (Exception ex)
         {
-            CustomLogger.Log("PlayClickedCard: EXCEPTION");
+            CustomLogger.Log("EXCEPTION");
             CustomLogger.Log(ex.StackTrace);
             CustomLogger.Log(ex.Message);
             throw;
