@@ -31,6 +31,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private Toggle playerToggle;
     private Button unoButton;
     private Button challengeButton;
+    private Button leaveButton;
 
     private string lastUpdateGuid = string.Empty;
 

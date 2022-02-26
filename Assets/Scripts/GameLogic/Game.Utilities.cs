@@ -68,6 +68,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private void UpdateLog(string textToUpdate, [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
     {
         playerLog.text = textToUpdate;
+        Canvas.ForceUpdateCanvases();
         CustomLogger.Log(textToUpdate, memberName);
     }
 
@@ -187,8 +188,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         leaveGame.onClick.AddListener(() =>
         {
-            PhotonNetwork.LeaveRoom();
-            SceneManager.LoadScene("CreateGame", LoadSceneMode.Single);
+            LocalPlayerReference.LeaveGame(photonView);
         });
 
         // Generate WinnerBanner
@@ -321,11 +321,6 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             }
         }
 
-        if (!allPlayersReady)
-        {
-            UpdateLog($"{playersCount} of {PhotonNetwork.CurrentRoom.Players.Count} are ready.");
-        }
-
         return allPlayersReady;
     }
 
@@ -336,7 +331,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             if (CheckAllPlayersAreReady())
             {
                 CustomLogger.Log($"Calling RestartGame");
-                photonView.RPC("RestartGame", RpcTarget.AllViaServer);
+                photonView.RPC("RestartGame", RpcTarget.AllBufferedViaServer, Guid.NewGuid().ToString());
             }
         }
     }

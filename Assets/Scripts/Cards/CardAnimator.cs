@@ -17,7 +17,22 @@ public class CardAnimator : MonoBehaviour
 
         if (toTarget != null)
         {
-            var targetTransform = toTarget.transform;
+            return AnimateToPosition(transform.position, transform.rotation);
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Card animator that takes care of LERPing the cards to the specific location.
+    /// </summary>
+    /// <param name="targetTo">The transform the card should go to</param>
+    /// <returns>true if the animation completed; false if the target was null</returns>
+    public bool AnimateToPosition(Vector3 position, Quaternion rotation)
+    {
+        Transform cardToMoveToTarget = this.transform;
+
+        if (position != null)
+        {
 
             // Move our position a step closer to the target.
             // To make sure someone with a REAAALLY large screen doesn't have a disadvantage when someone is using a small screen
@@ -27,8 +42,8 @@ public class CardAnimator : MonoBehaviour
 
             while (elapsedTime < waitTime)
             {
-                cardToMoveToTarget.position = Vector3.Lerp(cardToMoveToTarget.position, targetTransform.transform.position, (elapsedTime / waitTime));
-                cardToMoveToTarget.rotation = Quaternion.Lerp(cardToMoveToTarget.rotation, targetTransform.transform.rotation, (elapsedTime / waitTime));
+                cardToMoveToTarget.position = Vector3.Lerp(cardToMoveToTarget.position, position, (elapsedTime / waitTime));
+                cardToMoveToTarget.rotation = Quaternion.Lerp(cardToMoveToTarget.rotation, rotation, (elapsedTime / waitTime));
                 elapsedTime += Time.deltaTime;
             }
         }

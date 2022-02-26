@@ -1,14 +1,21 @@
-﻿using Assets.Scripts.Common;
-using Photon.Realtime;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Assets.Scripts.Common;
+using Photon.Realtime;
 using UnityEngine;
 
 public abstract class LocalPlayerBase<T> : MonoBehaviour
 {
+
+    public enum PlayerStatus
+    {
+        ACTIVE,
+        INACTIVE,
+        LEFT
+    }
     protected const float zOrderSpacing = 0.01f;
     protected const float horizontalSpacing = 0.8f;
     protected const float maxJitterTranslation = 0.06f;
@@ -83,22 +90,17 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// </remarks>
     /// <param name="cardToPlayAgainst">The card that is currently being played against.</param>
     /// <returns>The card selected from the player's hand.</returns>
-    public virtual Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addCardToHand, bool removeFromHand = true)
+    public virtual Card PlayCard(Card cardToPlay, Card cardToPlayAgainst, bool removeFromHand = true)
     {
-        if (myCard.CanPlay(cardToPlayAgainst))
+        CustomLogger.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+        if (cardToPlay != Card.Empty && cardToPlay.CanPlay(cardToPlayAgainst))
         {
-            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            CustomLogger.Log($"We can play {cardToPlay} against {cardToPlayAgainst}");
             if (removeFromHand)
             {
-                RemoveCard(myCard);
+                RemoveCard(cardToPlay);
             }
-            return myCard;
-        }
-
-        // Only add it if it can't be played...
-        if (addCardToHand)
-        {
-            AddCard(myCard);
+            return cardToPlay;
         }
         return Card.Empty;
     }
@@ -116,7 +118,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public virtual void RemoveCard(Card cardToRemove)
     {
-        // Debug.Log($"Removing {cardToRemove} from {this.Name} hand");
+        CustomLogger.Log($"Removing {cardToRemove} from {this.Name} hand");
         Hand.Remove(cardToRemove);
         HandChangedEvent(this, cardToRemove);
     }
@@ -207,6 +209,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
                         rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
                         cardNumber);
                     cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+                    cardToAdd.SetPosition();
                 }
             }
         }
@@ -256,14 +259,14 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         {
             if (item.tag == "Dimmable")
             {
-                var allCards = item.GetComponent<SpriteRenderer>();
-                var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
-                allCards.color = dimColor;
+                item.Dim(dim);
             }
         }
     }
 
     public abstract void PlayerLeftGame();
+
+    public abstract void PlayerDisconnected();
 
     public abstract bool AnimateCardToPlayer(Card cardToAnimate);
 
@@ -341,7 +344,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         {
             CustomLogger.Log($"Hand.Count = {Hand.Count}");
             CalledUno = true;
-        } 
+        }
 
         CustomLogger.Log($"CalledUno = {CalledUno}");
         CustomLogger.Log($"Exit");

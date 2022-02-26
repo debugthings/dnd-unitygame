@@ -1,11 +1,8 @@
-﻿using Assets.Scripts;
+﻿using System;
+using Assets.Scripts;
 using Photon.Pun;
 using Photon.Realtime;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class CreateGameLogic : MonoBehaviourPunCallbacks
@@ -14,11 +11,9 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
     public Button createGameButton;
     public TMPro.TMP_InputField gameRoomName, userName;
     public GameObject errorMessage, connectedMessage;
-
     private byte playerNumbers = 10;
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private int seedTicks = 0;
-
     public static Guid g = Guid.NewGuid();
 
     void Start()
@@ -32,7 +27,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
             Debug.Log("Running expected random seed from editor.");
             seedTicks = 1851936439;
         }
-        else 
+        else
         {
             seedTicks = (new System.Random()).Next(0, int.MaxValue);
         }
@@ -50,7 +45,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         msg.text = string.Format(msgText, msgText);
         createGameButton.interactable = true;
         base.OnConnected();
-        
+
     }
 
     public override void OnConnected()
@@ -122,6 +117,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         var roomOptions = new Photon.Realtime.RoomOptions()
         {
             MaxPlayers = playerNumbers,
+            PlayerTtl = 60000,
             CustomRoomProperties = new ExitGames.Client.Photon.Hashtable()
             {
                 [Constants.SeedKeyName] = seedTicks,
@@ -130,5 +126,6 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         // Try to create the room in the default lobby.
         PhotonNetwork.NickName = userName.text;
         PhotonNetwork.JoinOrCreateRoom(gameRoomName.text.ToLower(), roomOptions, TypedLobby.Default);
+
     }
 }

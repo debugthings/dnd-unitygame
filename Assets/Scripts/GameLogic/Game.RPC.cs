@@ -1,29 +1,31 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Assets.Scripts;
+using Assets.Scripts.Common;
+using ExitGames.Client.Photon;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using TMPro;
-using System.Threading.Tasks;
-using System.Threading;
-using Photon.Realtime;
-using Photon.Pun;
-using ExitGames.Client.Photon;
-using Assets.Scripts;
-using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
-using System.Collections.Concurrent;
-using Assets.Scripts.Common;
+using UnityEngine.UI;
 
 public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
+    private HashSet<string> rpcCalls = new HashSet<string>();
+
     private async void SendMoveToRPC(Card cardToPlay, LocalPlayerBase<Player> playerMakingMove)
     {
         var updateGuid = Guid.NewGuid().ToString();
         CustomLogger.Log($"Calling SendMoveToAllPlayers with {updateGuid}");
         await Task.Delay(100); // Adding a simple delay to help throttle the messages coming in
-        photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllViaServer, playerMakingMove.Player.ActorNumber, cardToPlay.CardRandom, cardToPlay.Color, cardToPlay.WildColor, cardToPlay.Value, updateGuid);
+        photonView.RPC("SendMoveToAllPlayers", RpcTarget.AllBufferedViaServer, playerMakingMove.Player.ActorNumber, cardToPlay.CardRandom, cardToPlay.Color, cardToPlay.WildColor, cardToPlay.Value, updateGuid);
         PhotonNetwork.SendAllOutgoingCommands(); // Send message immediately to avoid lag
     }
 
@@ -33,6 +35,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
     void SendMoveToAllPlayers(int playerActorNumber, int cardRandom, Card.CardColor cardColor, Card.CardColor cardWildColor, Card.CardValue cardValue, string updateGuid)
     {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
         PhotonNetwork.IsMessageQueueRunning = false;
         try
         {
@@ -46,58 +52,68 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             if (playerSending != null)
             {
                 // Log safely
+                var dealDeckCard = Card.Empty;
                 try
                 {
-                    CustomLogger.Log($"Found player {playerSending.Name}");
-                    CustomLogger.Log($"cardRandom = {cardRandom}");
-                    CustomLogger.Log($"dealDeck = {dealDeck.PeekTopCard().CardRandom}");
-                    CustomLogger.Log($"dealDeck Card = {dealDeck.PeekTopCard()}");
+                    dealDeckCard = dealDeck.PeekTopCard();
                 }
                 catch (Exception)
                 {
                 }
 
+                CustomLogger.Log($"Player {playerSending.Name}");
+                CustomLogger.Log($"Card Random = {cardRandom}");
+                CustomLogger.Log($"Deal Deck Card Random = {dealDeckCard?.CardRandom.ToString() ?? "null"}");
+                CustomLogger.Log($"Deal Deck Card = {dealDeckCard?.ToString() ?? "null"}");
+
+                // First, is the card one the player already has in their hand?
                 var cardToPlay = playerSending.Hand.Find(card => card.CardRandom == cardRandom);
 
+                // If it's not, lets try to pull that card for the player.
+                // Otherwise log that it's there and continue with the play.
                 if (cardToPlay == null)
                 {
                     CustomLogger.Log($"Card was NOT found in player's hand");
 
-                    // If the remote player says they have a card we need to see if it's in the deal deck and give it to them.
+                    // If the player says they have a card we need to see if it's in the deal deck and give it to them.
                     if (dealDeck.PeekTopCard().CardRandom == cardRandom)
                     {
-                        CustomLogger.Log($"We were able to peek the card");
                         cardToPlay = TakeFromDealPile();
-                        CustomLogger.Log($"Card was NOT found in player's hand but was found in the deal deck. Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
-
-                        // If the card can be played do not add it to the player's hand since we don't want to reset the Uno flag
-                        if (!cardToPlay.CanPlay(discardDeck.PeekTopCard()))
-                        {
-                            CustomLogger.Log("Added card to hand");
-                            playerSending.AnimateCardToPlayer(cardToPlay);
-                            playerSending.AddCard(cardToPlay);
-                            cardToPlay = Card.Empty;
-                        }
-                        else
-                        {
-                            CustomLogger.Log("Did not add card to hand");
-                        }
+                        CustomLogger.Log($"The card that was sent to the RPC is the one in the deck.");
+                        CustomLogger.Log($"Giving {cardToPlay} with Id {cardToPlay.CardRandom} to {playerSending.Name}");
                     }
                 }
                 else
                 {
-                    CustomLogger.Log($"Card was found in player's hand");
-                    CustomLogger.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
-                    cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard(), false);
+                    // Removed the card player stuff
+                    CustomLogger.Log($"Card was found in player's hand. We will attempt to play the card.");
                 }
 
-                if (cardToPlay.Color == Card.CardColor.Wild)
+                // If the card can be played do not add it to the player's hand since we don't want to reset the Uno flag
+                if (!cardToPlay.CanPlay(discardDeck.PeekTopCard()))
                 {
-                    // When we're here we need to make sure we honor the player's wild color choice
-                    CustomLogger.Log($"Set {cardToPlay} to wild color {cardWildColor}");
-                    cardToPlay.SetWildColor(cardWildColor);
+                    CustomLogger.Log("This card cannot be played against the current discard. We will add it to the players hand.");
+                    playerSending.AnimateCardToPlayer(cardToPlay);
+                    playerSending.AddCard(cardToPlay);
+                    cardToPlay = Card.Empty;
+                }
+                else
+                {
+                    CustomLogger.Log("This card can be played against the current discard. We will attempt to play the card.");
+                    // Set the wild color first
+                    if (cardToPlay.Color == Card.CardColor.Wild)
+                    {
+                        // When we're here we need to make sure we honor the player's wild color choice
+                        CustomLogger.Log($"Set {cardToPlay} to wild color {cardWildColor}");
+                        cardToPlay.SetWildColor(cardWildColor);
+                    }
+
                 }
 
+                // Let's try to play the card.
+                cardToPlay = playerSending.PlayCard(cardToPlay, discardDeck.PeekTopCard());
+
+                // Play what ever card the PlayCard logic spits out.
                 GameLoop(cardToPlay, playerSending);
 
                 // If the player has taken the last card the the discard deck is swapped
@@ -105,14 +121,14 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 if (dealDeck.Count == 0)
                 {
                     CustomLogger.Log($"Discard deck is empty.");
-                    discardDeck.AddCardToDeck(TakeFromDealPile(), true);
+                    PutCardOnDiscardPile(TakeFromDealPile(), true);
                 }
             }
         }
         catch (Exception ex)
         {
-            CustomLogger.Log($"{ex.StackTrace}");
-            CustomLogger.Log($"{ex.Message}");
+            CustomLogger.Log(ex.StackTrace);
+            CustomLogger.Log(ex.Message);
             throw;
         }
         finally
@@ -125,8 +141,13 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    void RestartGame()
+    void RestartGame(string updateGuid)
     {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
+        PhotonNetwork.IsMessageQueueRunning = false;
         try
         {
             Destroy(winnerBannerPrefabToDestroy);
@@ -142,14 +163,21 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         finally
         {
+            // So we don't get a number of these things happening while we're in a loop we need to 
+            // stop the message pump to be sure we don't invalidate state.
+            PhotonNetwork.IsMessageQueueRunning = true;
         }
-
     }
 
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    void CallUno(Player playerToCallUno)
+    void CallUno(Player playerToCallUno, string updateGuid)
     {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
+        PhotonNetwork.IsMessageQueueRunning = false;
         CustomLogger.Log("Enter");
         try
         {
@@ -166,14 +194,25 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         finally
         {
-            CustomLogger.Log("Enter");
+            // So we don't get a number of these things happening while we're in a loop we need to 
+            // stop the message pump to be sure we don't invalidate state.
+            PhotonNetwork.IsMessageQueueRunning = true;
+            CustomLogger.Log("Exit");
         }
+
     }
 
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    void ChallengePlay(Player challengePlayer)
+    void ChallengePlay(Player challengePlayer, string updateGuid)
     {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+
+        CustomLogger.Log("Enter");
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
+        PhotonNetwork.IsMessageQueueRunning = false;
         try
         {
             var localChallengePlayer = playerRotation.FindPlayerByNetworkPlayer(challengePlayer);
@@ -208,7 +247,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 // Someone is getting two cards...
                 for (int i = 0; i < 2; i++)
                 {
-                    playerToGetTwoCards.AddCard(TakeFromDealPile());
+                    playerToGetTwoCards.AddCard(TakeFromDealPile(true));
                 }
                 UpdateLog(message);
             }
@@ -227,9 +266,63 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         finally
         {
+            CustomLogger.Log("Exit");
+            // So we don't get a number of these things happening while we're in a loop we need to 
+            // stop the message pump to be sure we don't invalidate state.
+            PhotonNetwork.IsMessageQueueRunning = true;
         }
 
     }
+
+    [PunRPC]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
+    void LeaveGame(Player otherPlayer, string updateGuid)
+    {
+        try
+        {
+            var playerWhoLeft = playerRotation.FindPlayerByNetworkPlayer(otherPlayer);
+            var tempList = new List<Card>();
+            for (int i = 0; i < playerWhoLeft.Hand.Count; i++)
+            {
+                tempList.Add(playerWhoLeft.Hand[i]);
+            }
+
+            foreach (var item in tempList)
+            {
+                var c = playerWhoLeft.PlayCard(item, item);
+                dealDeck.PutCardBackInDeckInRandomPoisiton(c, 0, Math.Max(0, dealDeck.Count - 1));
+            }
+
+            playerRotation.Remove(playerWhoLeft);
+            playerWhoLeft.PlayerLeftGame();
+            CustomLogger.Log($"Player {otherPlayer.NickName} has left the game");
+
+            if (!stopGame)
+            {
+                // If there is only one person left in the game, they win
+                if (playerRotation.Count == 1)
+                {
+                    var player = playerRotation.FirstOrDefault();
+                    ShowWin(player);
+                }
+                else
+                {
+                    AdvanceNextPlayer();
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError(ex.ToString());
+        }
+        finally
+        {
+        }
+
+    }
+
+
     #endregion
 
 

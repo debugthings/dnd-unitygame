@@ -1,20 +1,30 @@
-﻿using Assets.Scripts.Common;
-using Photon.Realtime;
+﻿using System;
+using System.Collections;
 using System.Threading.Tasks;
+using Assets.Scripts;
+using Assets.Scripts.Common;
+using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class LocalPlayer : LocalPlayerBase<Player>
 {
     public Button unoButton;
     public Button challengeButton;
+    public Button leaveButton;
     public Toggle dimmableCardToggle;
     public Transform gradient;
 
     public override void PlayerLeftGame()
     {
     }
-    
+
+    public override void PlayerDisconnected()
+    {
+    }
+
     public void ItsYourTurn(bool toggle)
     {
         gradient.gameObject.SetActive(toggle);
@@ -42,7 +52,7 @@ public class LocalPlayer : LocalPlayerBase<Player>
         return CalledUno;
     }
 
-    public  void ChangeUnoButtonColor(Color greenColor)
+    public void ChangeUnoButtonColor(Color greenColor)
     {
         var buttonColors = unoButton.colors;
         buttonColors.normalColor = greenColor;
@@ -59,4 +69,13 @@ public class LocalPlayer : LocalPlayerBase<Player>
         return cardToAnimate.AnimateToPosition(discardDeck.transform);
 
     }
+
+    public void LeaveGame(PhotonView photonView)
+    {
+        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.SendAllOutgoingCommands();
+        SceneManager.LoadScene("CreateGame", LoadSceneMode.Single);
+    }
+
+    
 }

@@ -89,7 +89,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
         var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
-        instantiatedCard.SetProps(randomValue, cardValue, cardColor);
+        instantiatedCard.SetProps(randomValue, cardValue, cardColor, dealDeck.transform.position, discardDeck.transform.position);
         instantiatedCard.name = instantiatedCard.ToString();
         // Log($"Built {instantiatedCard.name}");
         CustomLogger.Log($"Rand: {randomValue} Card: {instantiatedCard}");
@@ -258,15 +258,21 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
                 challengeButton.onClick.AddListener(() =>
                 {
-                    photonView.RPC("ChallengePlay", RpcTarget.AllViaServer, LocalPlayerReference.Player);
+                    photonView.RPC("ChallengePlay", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
                     PhotonNetwork.SendAllOutgoingCommands();
                 });
 
                 unoButton = localPlayer.unoButton;
                 unoButton.onClick.AddListener(() =>
                 {
-                    photonView.RPC("CallUno", RpcTarget.AllViaServer, localPlayer.Player);
+                    photonView.RPC("CallUno", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
                     PhotonNetwork.SendAllOutgoingCommands();
+                });
+
+                leaveButton = localPlayer.leaveButton;
+                leaveButton.onClick.AddListener(() =>
+                {
+                    localPlayer.LeaveGame(photonView);
                 });
 
                 playerRotation.Add(localPlayer);

@@ -139,6 +139,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         // When we're here we know that we're not actively animating the card loads and the game should execute at about the same pace.
         PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerGameLoaded] = true });
+        await Task.Delay(100);
         while (CheckAllPlayersAreGameReady())
         {
             await Task.Delay(20);
@@ -219,7 +220,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     /// Pulls a card from the deal pile and will automatically swap the discard pile if needed
     /// </summary>
     /// <returns></returns>
-    public Card TakeFromDealPile()
+    public Card TakeFromDealPile(bool calledInALoop = false)
     {
         CustomLogger.Log("Enter");
         try
@@ -232,6 +233,13 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             {
                 CustomLogger.Log($"Swapping decks");
                 dealDeck.SwapCardsFromOtherDeck(discardDeck);
+
+                // If we're swapping decks and we're doing this in a loop (ie for a Draw Four card), 
+                // remove the topmost card as it will be the one we need to put back on the discard deck.
+                if (calledInALoop)
+                {
+                    PutCardOnDiscardPile(dealDeck.TakeTopCard(), true);
+                }
                 return dealDeck.TakeTopCard();
             }
             return Card.Empty;
@@ -239,7 +247,6 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         finally
         {
             CustomLogger.Log("Exit");
-
         }
     }
 
@@ -271,54 +278,39 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         return GameAction.NextPlayer;
     }
 
+    /// <summary>
+    /// Called from the mouse handler to play the actual card. In here we'll handle what happens when a wild card is shown.
+    /// </summary>
+    /// <param name="cardObject"></param>
+    public void PullCardFromDealDeck()
+    {
+        CustomLogger.Log("Player double clicked the deal deck to draw a card. Taking card from deal pile");
+
+        // All play actions will be dealt with via the RPC. We will take the card reference and send it over to the RPC.
+        var cardToPlay = dealDeck.PeekTopCard();
+        CustomLogger.Log($"Peeked {cardToPlay}");
+        PlayClickedCard(cardToPlay, true);
+    }
 
     /// <summary>
     /// Called from the mouse handler to play the actual card. In here we'll handle what happens when a wild card is shown.
     /// </summary>
     /// <param name="cardObject"></param>
-    public void PlayClickedCard(Card cardObject)
+    public void PlayClickedCard(Card cardObject, bool cardFromDealDeck = false)
     {
         try
         {
             CustomLogger.Log("Enter");
             if (PlayerCanMakeMove())
             {
-                var cardDeck = cardObject.GetComponentInParent<CardDeck>();
-                var player = cardObject.GetComponentInParent<LocalPlayer>();
-                Card cardToPlay = Card.Empty;
+                Card cardToPlay = cardObject;
 
-                if (cardDeck is CardDeck && cardDeck.name == "DealDeck")
+                // If the card is from the player's hand we need to make sure 
+                // we can play this card. Otherwise let the RPC handle it
+                if (!cardFromDealDeck)
                 {
-                    CustomLogger.Log("Player doubleclicked the deal deck to draw a card. Taking card from deal pile");
-
-                    // If we're in play and the player decides to draw, either the card will be played or added to the hand.
-                    // When we're in networked mode we'll need to take into account that anyone can double click the deck so we'll need to make sure
-                    // the click originated from the player.
-                    cardToPlay = TakeFromDealPile();
-                    CustomLogger.Log("Adding card to hand");
-                    LocalPlayerReference.AddCard(cardToPlay);
-
-                    // If the card can't be played then we should add it to the hand.
-                    if (cardToPlay != null && cardToPlay != Card.Empty && !cardToPlay.CanPlay(discardDeck.PeekTopCard()))
-                    {
-
-                    }
-                    else
-                    {
-                        CustomLogger.Log("Did not add card to hand.");
-                    }
+                    cardToPlay = LocalPlayerReference.PlayCard(cardObject, discardDeck.PeekTopCard(), false);
                 }
-                else if (player is LocalPlayer)
-                {
-                    CustomLogger.Log($"Player double clicked {cardObject}");
-                    // If we're here we've likely tried to play a card. We need to check to see the card is okay to play.
-                    cardToPlay = LocalPlayerReference.PlayCard(cardObject, discardDeck.PeekTopCard(), false, false);
-                }
-                else if (cardDeck is CardDeck && cardDeck.name == "DiscardDeck")
-                {
-                    CustomLogger.Log($"Player double clicked the discard deck, do nothing.");
-                }
-
 
                 // Do the game action on the playable card.
                 if (cardToPlay != Card.Empty && cardToPlay != null)
@@ -326,12 +318,14 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     if (cardToPlay.Color == Card.CardColor.Wild)
                     {
                         CustomLogger.Log($"Player double clicked a wild card, showing the wild card screen.");
+                        CustomLogger.Log($"Player chose {cardToPlay.WildColor}.");
                         HandleWildCard(cardToPlay);
                     }
                     else
                     {
                         SendMoveToRPC(cardToPlay, LocalPlayerReference);
                     }
+
                 }
             }
             CustomLogger.Log("Exit");
@@ -419,7 +413,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             case GameAction.DrawTwo:
                 for (int i = 0; i < 2; i++)
                 {
-                    nextPlayer.AddCard(TakeFromDealPile());
+                    nextPlayer.AddCard(TakeFromDealPile(true));
                 }
 
                 if (firstPlay)
@@ -433,9 +427,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 }
                 break;
             case GameAction.DrawFour:
+                // In the event that a Draw Four is pulled with 3 or less cards in the discard we need to handle that.
                 for (int i = 0; i < 4; i++)
                 {
-                    nextPlayer.AddCard(TakeFromDealPile());
+                    nextPlayer.AddCard(TakeFromDealPile(true));
                 }
                 UpdateLog($"{nextPlayer.Name} must Draw Four! Skipping {nextPlayer.Name}!");
                 playerRotation.Next();
