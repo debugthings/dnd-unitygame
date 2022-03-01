@@ -11,9 +11,7 @@ using UnityEngine.UI;
 
 public class LocalPlayer : LocalPlayerBase<Player>
 {
-    public Button unoButton;
-    public Button challengeButton;
-    public Button leaveButton;
+    public Button unoButton, challengeUnoButton, challengeLastPlayButton, leaveButton;
     public Toggle dimmableCardToggle;
     public Transform gradient;
 

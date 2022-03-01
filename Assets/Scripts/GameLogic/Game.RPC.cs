@@ -154,7 +154,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             UpdateLog(string.Empty);
             ResetDecks();
             StartGame();
-            CustomLogger.Log("Starting a new game!");
+            CustomLogger.Log("Starting a new game.");
         }
         catch (Exception ex)
         {
@@ -204,7 +204,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    void ChallengePlay(Player challengePlayer, string updateGuid)
+    void ChallengeUno(Player challengePlayer, string updateGuid)
     {
         if (rpcCalls.Contains(updateGuid)) return;
         rpcCalls.Add(updateGuid);
@@ -224,13 +224,13 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 CustomLogger.Log($"CalledUno = {playerToGetTwoCards.CalledUno}");
                 CustomLogger.Log($"HasBeenChallenged = {playerToGetTwoCards.HasBeenChallenged}");
 
-                string message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and won! {playerToGetTwoCards.Name} draws two cards!";
+                string message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and won. {playerToGetTwoCards.Name} draws two cards.";
 
                 // If the player remembered to click the uno button on the next play the the challenger gets the cards
                 if (playerToGetTwoCards.CalledUno)
                 {
                     CustomLogger.Log($"{playerToGetTwoCards.Name} Has called Uno");
-                    message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and lost! {localChallengePlayer.Name} draws two cards!";
+                    message = $"{localChallengePlayer.Name} challenged {playerToGetTwoCards.Name} and lost. {localChallengePlayer.Name} draws two cards.";
                     playerToGetTwoCards = localChallengePlayer;
 
                     CustomLogger.Log($"{playerToGetTwoCards.Name} is now getting the cards");
@@ -274,50 +274,92 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
     }
 
+
     [PunRPC]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
-    void LeaveGame(Player otherPlayer, string updateGuid)
+    void ChallengePlay(Player challengePlayer, string updateGuid)
     {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+
+        CustomLogger.Log("Enter");
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
+        PhotonNetwork.IsMessageQueueRunning = false;
         try
         {
-            var playerWhoLeft = playerRotation.FindPlayerByNetworkPlayer(otherPlayer);
-            var tempList = new List<Card>();
-            for (int i = 0; i < playerWhoLeft.Hand.Count; i++)
-            {
-                tempList.Add(playerWhoLeft.Hand[i]);
+            var challenger = playerRotation.FindPlayerByNetworkPlayer(challengePlayer);
+            var playerWhoPlayedDraw4 = lastPlayer;
+            string message = string.Empty;
+
+            // The rules state that if someone played a draw four and had a card in their hand that matches the previously played color
+            // ie the card below the wild draw 4 then the draw player gets the four cards
+            // If you loose the challenge you get the four cards AND a penalty.
+            if (playerWhoPlayedDraw4.HandHasColorCardToBePlayed(discardDeck.PeekNthCard(2)))
+            {   
+                CustomLogger.Log($"{playerWhoPlayedDraw4.Name} had a card that could be played.");
+                message = $"{challenger.Name} challenged {playerWhoPlayedDraw4.Name} and won. {playerWhoPlayedDraw4.Name} draws four cards.";
+                // This player gets four cards and we do not skip the following player.
+                ExecuteDrawFour(playerWhoPlayedDraw4, false);
             }
-
-            foreach (var item in tempList)
+            else
             {
-                var c = playerWhoLeft.PlayCard(item, item);
-                dealDeck.PutCardBackInDeckInRandomPoisiton(c, 0, Math.Max(0, dealDeck.Count - 1));
-            }
-
-            playerRotation.Remove(playerWhoLeft);
-            playerWhoLeft.PlayerLeftGame();
-            CustomLogger.Log($"Player {otherPlayer.NickName} has left the game");
-
-            if (!stopGame)
-            {
-                // If there is only one person left in the game, they win
-                if (playerRotation.Count == 1)
+                message = $"{challenger.Name} challenged {playerWhoPlayedDraw4.Name} and lost. {challenger.Name} draws six cards.";
+                ExecuteDrawFour(challenger);
+                for (int i = 0; i < 2; i++)
                 {
-                    var player = playerRotation.FirstOrDefault();
-                    ShowWin(player);
-                }
-                else
-                {
-                    AdvanceNextPlayer();
+                    challenger.AddCard(TakeFromDealPile(true));
                 }
             }
+
+            UpdateLog(message);
 
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex.ToString());
+            CustomLogger.Log(ex);
+            throw;
         }
         finally
         {
+            CustomLogger.Log("Exit");
+            // So we don't get a number of these things happening while we're in a loop we need to 
+            // stop the message pump to be sure we don't invalidate state.
+            PhotonNetwork.IsMessageQueueRunning = true;
+        }
+
+    }
+
+    [PunRPC]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
+    void DeclineChallenge(Player challengePlayer, string updateGuid)
+    {
+        if (rpcCalls.Contains(updateGuid)) return;
+        rpcCalls.Add(updateGuid);
+
+        CustomLogger.Log("Enter");
+        // So we don't get a number of these things happening while we're in a loop we need to 
+        // stop the message pump to be sure we don't invalidate state.
+        PhotonNetwork.IsMessageQueueRunning = false;
+        try
+        {
+            var localChallengePlayer = playerRotation.FindPlayerByNetworkPlayer(challengePlayer);
+            ExecuteDrawFour(localChallengePlayer);
+            string message = $"{localChallengePlayer.Name} declined the challenge and draws four cards!";
+            UpdateLog(message);
+
+        }
+        catch (Exception ex)
+        {
+            CustomLogger.Log(ex);
+            throw;
+        }
+        finally
+        {
+            CustomLogger.Log("Exit");
+            // So we don't get a number of these things happening while we're in a loop we need to 
+            // stop the message pump to be sure we don't invalidate state.
+            PhotonNetwork.IsMessageQueueRunning = true;
         }
 
     }

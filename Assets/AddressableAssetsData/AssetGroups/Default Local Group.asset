@@ -21,534 +21,362 @@ MonoBehaviour:
     m_Address: Assets/Card Sprites/Uno_B_0.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 044b87c7c45dad743a85a79c997c9d9d
     m_Address: Assets/Card Sprites/Uno_B_1.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 99fab79f2abce5845aeff5c96ee87f96
     m_Address: Assets/Card Sprites/Uno_B_2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 2119c7ab63ef4a940b24f91ca1587e9c
     m_Address: Assets/Card Sprites/Uno_B_3.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 4504f5e6542687244841c6e3d2991afc
     m_Address: Assets/Card Sprites/Uno_B_4.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d77226f33c6204a448faae4a89d39041
     m_Address: Assets/Card Sprites/Uno_B_5.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 56395a9c73e90294894fc34b850b6653
     m_Address: Assets/Card Sprites/Uno_B_6.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: a7bb6bfee3272d34b8214dad80377779
     m_Address: Assets/Card Sprites/Uno_B_7.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d25d64a86c4eb6d4486956162a9f7710
     m_Address: Assets/Card Sprites/Uno_B_8.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 2e8a850b893e65344a3829bbd905338d
     m_Address: Assets/Card Sprites/Uno_B_9.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d78d1d250e1b9df4d8685b6ebcb47a99
     m_Address: Assets/Card Sprites/Uno_B_D2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: e6179a1d7405cae4da0f851795696841
     m_Address: Assets/Card Sprites/Uno_B_DrawFour.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 715edc3ceadbba74486b5f0bae6ca4e5
     m_Address: Assets/Card Sprites/Uno_B_RV.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 13972f58435e9d74c90eb6542e35cd9f
     m_Address: Assets/Card Sprites/Uno_B_SK.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 5b5222c827b0f834fb791037b2dc63e6
     m_Address: Assets/Card Sprites/Uno_B_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d861719480b71c04b997a471873bd0b3
     m_Address: Assets/Card Sprites/Uno_Back.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 90b0f3092c6b1354aa8db75a1e9245a9
     m_Address: Assets/Card Sprites/Uno_Custom.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 4bc6fc03ac003a34f9455b56b866b838
     m_Address: Assets/Card Sprites/Uno_G_0.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 4b3464d5f9697b34c9729a98028bf8c7
     m_Address: Assets/Card Sprites/Uno_G_1.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: bc5a0d26145a27c409807cc0e9bacd4c
     m_Address: Assets/Card Sprites/Uno_G_2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d4c8a2b16bfa4b14791a52488b61b036
     m_Address: Assets/Card Sprites/Uno_G_3.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 23eedaaffee7e3b4f9ffb3d2dd5889fc
     m_Address: Assets/Card Sprites/Uno_G_4.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 1a0fffc373718af4594661135816ae36
     m_Address: Assets/Card Sprites/Uno_G_5.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d11e4be30319bfd40a7f10448b5d4bbc
     m_Address: Assets/Card Sprites/Uno_G_6.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 1cc892315c7a2954c8b7adc200aab1b4
     m_Address: Assets/Card Sprites/Uno_G_7.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 7d1e5a3eab2c47c4c9f1ad14b6a209db
     m_Address: Assets/Card Sprites/Uno_G_8.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 5ba16290a95ab36459875f2d1d6a03e5
     m_Address: Assets/Card Sprites/Uno_G_9.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: cff5ac3adae00004c865b4d983d42c42
     m_Address: Assets/Card Sprites/Uno_G_D2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 117e89c66ddb67f47abd993db8dd592b
     m_Address: Assets/Card Sprites/Uno_G_DrawFour.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 59e0f7499a0a664448b3e9678047dad6
     m_Address: Assets/Card Sprites/Uno_G_RV.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 2159ee08c0c186a479efebff974928dd
     m_Address: Assets/Card Sprites/Uno_G_SK.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: a0cbcf24158a31143bd9d17f6d2da2d3
     m_Address: Assets/Card Sprites/Uno_G_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 3101410d1673536489d0b77c7be0d14e
     m_Address: Assets/Card Sprites/Uno_R_0.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: b2623872304a02646bb9e517933d9527
     m_Address: Assets/Card Sprites/Uno_R_1.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 0efb7db6b40ab5843bb3fda880c9800a
     m_Address: Assets/Card Sprites/Uno_R_2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 0c088c218bd948d4b98410dc30528e22
     m_Address: Assets/Card Sprites/Uno_R_3.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: fb31fe534eaa2244ab4344685c68f3c2
     m_Address: Assets/Card Sprites/Uno_R_4.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d8bbbafd6ae508d47b3c48448d8a37bd
     m_Address: Assets/Card Sprites/Uno_R_5.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 54f41619989e8a44dbb8ddfc8c852cf7
     m_Address: Assets/Card Sprites/Uno_R_6.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 19da18793002cdf479fa14f1db997bf7
     m_Address: Assets/Card Sprites/Uno_R_7.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 194f0ed205bacc84e93c5671eeba0a09
     m_Address: Assets/Card Sprites/Uno_R_8.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: b56edf207d354c148b757203048f9eeb
     m_Address: Assets/Card Sprites/Uno_R_9.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 5fb1fa8f4aea1444288b06e762dc784e
     m_Address: Assets/Card Sprites/Uno_R_D2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d913c2475a656c44a981f09b7ec28ac1
     m_Address: Assets/Card Sprites/Uno_R_DrawFour.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: ec49ccab77b4c9449a7332825455a97b
     m_Address: Assets/Card Sprites/Uno_R_RV.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 4115f37b2cdcb8241a422a2ac9d2b45c
     m_Address: Assets/Card Sprites/Uno_R_SK.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 6f435b33556fd4944b18a6a51f72821c
     m_Address: Assets/Card Sprites/Uno_R_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 77742c242187efd4aa0744cfe0875101
     m_Address: Assets/Card Sprites/Uno_Wild_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: c057e1e68fe629e4ea1b7a79ed822375
     m_Address: Assets/Card Sprites/Uno_Wild_DrawFour.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 2be54bfd7a6058d49b5b838687e3ff45
     m_Address: Assets/Card Sprites/Uno_Y_0.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 97b5261a41ef7f142ad776fa85a7617b
     m_Address: Assets/Card Sprites/Uno_Y_1.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: bb7d8fabe40e60848bd5554f5bf751b5
     m_Address: Assets/Card Sprites/Uno_Y_2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: a3498138791401441bac409708fb444e
     m_Address: Assets/Card Sprites/Uno_Y_3.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: cd219035a3b012f43a6d1a7a5d7232a1
     m_Address: Assets/Card Sprites/Uno_Y_4.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 8abf0a2375cd9804ebbbf14505898aa6
     m_Address: Assets/Card Sprites/Uno_Y_5.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 8e07e62cb62d0f4458fa7664641d40c0
     m_Address: Assets/Card Sprites/Uno_Y_6.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: bdf8ef0b7c9508b4a8ca36d869ace542
     m_Address: Assets/Card Sprites/Uno_Y_7.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: f00a8bb091b1d14459669c79043dedaa
     m_Address: Assets/Card Sprites/Uno_Y_8.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 245f0b89e73c1524fbf8706fc8a7084f
     m_Address: Assets/Card Sprites/Uno_Y_9.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: fc59d2d305b5c7340b35ba00df6e235b
     m_Address: Assets/Card Sprites/Uno_Y_D2.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: d05ce7e2fb3f55d459ee2f4de34ddfe8
     m_Address: Assets/Card Sprites/Uno_Y_DrawFour.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 1f04a95b4eea0804ea09a29464b838e0
     m_Address: Assets/Card Sprites/Uno_Y_RV.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 18458f6e4f7568840b053455ede2f262
     m_Address: Assets/Card Sprites/Uno_Y_SK.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 84337ea51a0bbb94aadc40bae1bf6059
     m_Address: Assets/Card Sprites/Uno_Y_Wild.png
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 6dd2eb9779615284c9d49e1ec0e239f1
     m_Address: Assets/Prefabs/Card.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
-      type: 3}
-    m_TargetAsset: {fileID: 2344751958255755273, guid: 6dd2eb9779615284c9d49e1ec0e239f1,
-      type: 3}
   - m_GUID: 4842de842a194d546ae88b66fecf0d1e
     m_Address: Assets/Prefabs/ComputerPlayer.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8240977832005720467, guid: 4842de842a194d546ae88b66fecf0d1e,
-      type: 3}
-    m_TargetAsset: {fileID: 8240977832005720467, guid: 4842de842a194d546ae88b66fecf0d1e,
-      type: 3}
   - m_GUID: 3e884209bccab0e4db14d71c5e463eb3
     m_Address: Assets/Prefabs/Player.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 1a015a039e55dc542a1449c72d59be40
     m_Address: Assets/Prefabs/DimmableCard.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: be9350e25d2f4dc42a5aee0b5f57e944
     m_Address: Assets/Prefabs/WinBanner.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 78087b8233c23e14abe19d78ba045fd3
     m_Address: Assets/Prefabs/Wild Select.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 0}
-    m_TargetAsset: {fileID: 0}
   - m_GUID: 19f89c6e740e7447f9e12a8310d3e973
     m_Address: boop
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 19f89c6e740e7447f9e12a8310d3e973, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 19f89c6e740e7447f9e12a8310d3e973, type: 3}
   - m_GUID: 79180f511d89441b9aa23ccae1992fe0
     m_Address: card_chime
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 79180f511d89441b9aa23ccae1992fe0, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 79180f511d89441b9aa23ccae1992fe0, type: 3}
   - m_GUID: ffb159a21c8a04135a5616979c828fab
     m_Address: click
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: ffb159a21c8a04135a5616979c828fab, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: ffb159a21c8a04135a5616979c828fab, type: 3}
   - m_GUID: dc6614beca09347ec9b258f12d154bdd
     m_Address: error_chord_1
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: dc6614beca09347ec9b258f12d154bdd, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: dc6614beca09347ec9b258f12d154bdd, type: 3}
   - m_GUID: 72127805eb2bc4e7fbf2e02eca266cfa
     m_Address: error_chord_2
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 72127805eb2bc4e7fbf2e02eca266cfa, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 72127805eb2bc4e7fbf2e02eca266cfa, type: 3}
   - m_GUID: 52320e590bf774734a288886eba557ba
     m_Address: game_start
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 52320e590bf774734a288886eba557ba, type: 3}
   - m_GUID: 32d4b1811dda14a6cb9e059ee8ad17d2
     m_Address: light_click
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 32d4b1811dda14a6cb9e059ee8ad17d2, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 32d4b1811dda14a6cb9e059ee8ad17d2, type: 3}
   - m_GUID: fe0b1f9aeb45b41b089175aeeabd5d95
     m_Address: play_card_1
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
   - m_GUID: 3becec1909f194046945d85ac1077772
     m_Address: play_card_2
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 3becec1909f194046945d85ac1077772, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 3becec1909f194046945d85ac1077772, type: 3}
   - m_GUID: 81652031b64c342cc8dbc59c138d77c5
     m_Address: play_card_3
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 81652031b64c342cc8dbc59c138d77c5, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 81652031b64c342cc8dbc59c138d77c5, type: 3}
   - m_GUID: 6e8772b49f34d402a90016ed445d8a2f
     m_Address: play_card_4
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 6e8772b49f34d402a90016ed445d8a2f, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 6e8772b49f34d402a90016ed445d8a2f, type: 3}
   - m_GUID: d46323e22e74e46baa241cbf48c85671
     m_Address: play_card_5
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: d46323e22e74e46baa241cbf48c85671, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: d46323e22e74e46baa241cbf48c85671, type: 3}
   - m_GUID: 79e6baad2fd414b82a6d49ce1568d2e5
     m_Address: player_exit
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 79e6baad2fd414b82a6d49ce1568d2e5, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 79e6baad2fd414b82a6d49ce1568d2e5, type: 3}
   - m_GUID: 29bde6326b4c34ad8a12da475f79b50a
     m_Address: player_join
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 29bde6326b4c34ad8a12da475f79b50a, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 29bde6326b4c34ad8a12da475f79b50a, type: 3}
   - m_GUID: 0c008ee3ee72a4362a35be25fa5de043
     m_Address: player_turn
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}
   - m_GUID: 2667a0a008b044e218b63df62e2be749
     m_Address: player_win
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
   - m_GUID: 7bd6b897eb5ca4b7d88a205c4a51640c
     m_Address: player_win
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 7bd6b897eb5ca4b7d88a205c4a51640c, type: 3}
   - m_GUID: 7478151cf36724a7dada558f746c3633
     m_Address: player_tada
     m_ReadOnly: 0
     m_SerializedLabels: []
-    m_MainAsset: {fileID: 8300000, guid: 7478151cf36724a7dada558f746c3633, type: 3}
-    m_TargetAsset: {fileID: 8300000, guid: 7478151cf36724a7dada558f746c3633, type: 3}
+  - m_GUID: a701ca573bd86668cbe404f85dd1993c
+    m_Address: Assets/Prefabs/RoomListItem.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+  - m_GUID: 367b64547bee723a7934282819f7d5c7
+    m_Address: Assets/Prefabs/ChallengeWildDrawFour.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: ab0f2e2408961824e914f4504ec0c942, type: 2}
   m_SchemaSet:

@@ -1,9 +1,10 @@
-﻿using Assets.Scripts;
+﻿using System.Linq;
+using System.Text;
+using Assets.Scripts;
 using Photon.Pun;
 using Photon.Realtime;
-using System.Linq;
-using System.Text;
 using UnityEngine;
+using UnityEngine.Diagnostics;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -15,6 +16,8 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     // Start is called before the first frame update
 
     private bool startGameWhenAllAreReady = false;
+
+
     void Start()
     {
         Debug.Log($"Game room logic started.");
@@ -78,6 +81,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
             [Constants.GameStarted] = true
         };
         PhotonNetwork.CurrentRoom.SetCustomProperties(hashTable);
+        PhotonNetwork.CurrentRoom.PlayerTtl = 60000;
         // When the master client starts the game we should make the room maxed out so nobody can join
         PhotonNetwork.LoadLevel("LocalGame");
         // Turn off scene sync so a newly joining player won't be presented with a game board.
@@ -127,8 +131,9 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     public override void OnPlayerLeftRoom(Photon.Realtime.Player newPlayer)
     {
         Debug.Log($"{newPlayer} left room {PhotonNetwork.CurrentRoom.Name}");
+        
         UpdatePlayerList();
-        base.OnPlayerEnteredRoom(newPlayer);
+        base.OnPlayerLeftRoom(newPlayer);
     }
 
     private void UpdatePlayerList()
@@ -161,7 +166,8 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
                 var button = startGame.GetComponent<Button>();
                 button.interactable = false;
             }
-        } else
+        }
+        else
         {
             CheckAndStartGame();
         }
@@ -187,6 +193,6 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     // Update is called once per frame
     void Update()
     {
-
+        PingHelper.Ping(Time.deltaTime);
     }
 }

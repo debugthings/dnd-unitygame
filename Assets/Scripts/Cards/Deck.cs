@@ -104,6 +104,30 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         return cardToTake;
     }
 
+    public T PeekNthCard(int howMany)
+    {
+        if (howMany > 0)
+        {
+            var tempDeck = new Stack<T>();
+
+            for (int i = 0; i < howMany; i++)
+            {
+                tempDeck.Push(deck.Pop());
+            }
+            
+            T cardToTake = tempDeck.Peek();
+
+            for (int i = 0; i < howMany; i++)
+            {
+                deck.Push(tempDeck.Pop());
+            }
+            CustomLogger.Log(cardToTake.ToString());
+            return cardToTake;
+        }
+        return default(T);
+
+    }
+
     public void Shuffle()
     {
         // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle

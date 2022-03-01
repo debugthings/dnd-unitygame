@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Assets.Scripts.Common;
+using JetBrains.Annotations;
 using Photon.Realtime;
 using UnityEngine;
 
@@ -352,6 +353,16 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         return CalledUno;
     }
 
+    public bool HandHasColorCardToBePlayed(Card cardToPlay)
+    {
+        foreach (Card item in Hand)
+        {
+            if ((item.Value != Card.CardValue.Wild && item.Color == cardToPlay.Color)
+                    || (item.Value == Card.CardValue.Wild && item.Color == cardToPlay.WildColor))
+                return true;
+        }
+        return false;
+    }
 
 
 }

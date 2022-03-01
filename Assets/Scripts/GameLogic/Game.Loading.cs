@@ -157,6 +157,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var wildCardOperation = wildCardSelect.LoadAssetAsync<GameObject>();
         wildCardSelectPrefab = await wildCardOperation.Task;
 
+        CustomLogger.Log("Loading Challenge Draw Four Prefab");
+        var drawFourOperation = challengeDrawFour.LoadAssetAsync<GameObject>();
+        challengeDrawFourPrefab = await drawFourOperation.Task;
+
     }
 
     private void LoadAllSounds()
@@ -212,7 +216,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
             // Scale down when over a specific size
             var scale = numOfPlayers >= 6 ? 0.75 : 1;
-            var maxNumberOfCards = numOfPlayers >= 6 ? 8 : 10;
+            var maxNumberOfCards = numOfPlayers >= 6 ? 6 : 7;
 
             CustomLogger.Log($"Creating player {player.Value.NickName} with actor number {player.Value.ActorNumber}");
 
@@ -254,14 +258,15 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     TogglePlayableDimming(false);
                 });
 
-                challengeButton = localPlayer.challengeButton;
+                challengeUnoButton = localPlayer.challengeUnoButton;
 
-                challengeButton.onClick.AddListener(() =>
+                challengeUnoButton.onClick.AddListener(() =>
                 {
-                    photonView.RPC("ChallengePlay", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
+                    photonView.RPC("ChallengeUno", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
                     PhotonNetwork.SendAllOutgoingCommands();
                 });
 
+                
                 unoButton = localPlayer.unoButton;
                 unoButton.onClick.AddListener(() =>
                 {

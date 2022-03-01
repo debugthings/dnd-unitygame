@@ -8,24 +8,27 @@ using UnityEngine.SceneManagement;
 public class SceneLoader : MonoBehaviour
 {
     private int _startMenuSceneIndex = 0;
-    private int _createGameSceneIndex = 1;
-    private int _joinGameSceneIndex = 2;
+    private int _createGameLobbyIndex = 1;
+    private int _createGameSceneIndex = 2;
+    private int _joinGameSceneIndex = 3;
 
     public void LoadStartMenuScene()
     {
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
         SceneManager.LoadScene(_startMenuSceneIndex);
     }
 
     public void LoadCreateGameScene()
     {
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
         SceneManager.LoadScene(_createGameSceneIndex);
+    }
+
+    public void LoadGameLobby()
+    {
+        SceneManager.LoadScene(_createGameLobbyIndex);
     }
 
     public void LoadJoinGameScene()
     {
-        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
         SceneManager.LoadScene(_joinGameSceneIndex);
     }
 }

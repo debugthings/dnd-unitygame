@@ -1,25 +1,25 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Assets.Scripts;
+using Assets.Scripts.Common;
+using ExitGames.Client.Photon;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using TMPro;
-using System.Threading.Tasks;
-using System.Threading;
-using Photon.Realtime;
-using Photon.Pun;
-using ExitGames.Client.Photon;
-using Assets.Scripts;
-using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
-using System.Collections.Concurrent;
-using Assets.Scripts.Common;
+using UnityEngine.UI;
 
 public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
 
-    private async void StartGame()
+    private void StartGame()
     {
         gameStarted = true;
         stopGame = false;
@@ -139,10 +139,8 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
         // When we're here we know that we're not actively animating the card loads and the game should execute at about the same pace.
         PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerGameLoaded] = true });
-        await Task.Delay(100);
         while (CheckAllPlayersAreGameReady())
         {
-            await Task.Delay(20);
         }
         PhotonNetwork.LocalPlayer.SetCustomProperties(new Hashtable() { [Constants.PlayerGameLoaded] = null });
 
@@ -170,7 +168,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         else
         {
-            UpdateLog($"{playerMakingMove.Name} did not draw a playable card! {playerRotation.PeekNext().Name} is next!");
+            UpdateLog($"{playerMakingMove.Name} did not draw a playable card. {playerRotation.PeekNext().Name} is next.");
         }
 
         // Every time we run a GameLoop we're confident that we need to check a winner or we need to move to the next player.
@@ -211,7 +209,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 discardDeck.AddCardToDeck(dealDeck.TakeTopCard(), true);
                 break;
             default:
-                UpdateLog($"First play to {firstPlayerAfterDealer.Name}!");
+                UpdateLog($"First play to {firstPlayerAfterDealer.Name}.");
                 break;
         }
     }
@@ -384,28 +382,28 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
                 if (playerRotation.Count == 2)
                 {
-                    UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed}! Skipping {nextPlayer}!");
+                    UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed}. Skipping {nextPlayer}.");
                     playerRotation.Next();
                 }
 
                 if (firstPlay)
                 {
-                    UpdateLog($"Starting in reverse direction. {playerRotation.PeekNext().Name} is first!");
+                    UpdateLog($"Starting in reverse direction, {playerRotation.PeekNext().Name} is first.");
                 }
                 else
                 {
-                    UpdateLog($"{currentPlayer.Name} reversed play, {playerRotation.PeekNext().Name} is next!");
+                    UpdateLog($"{currentPlayer.Name} reversed play, {playerRotation.PeekNext().Name} is next.");
                 }
                 break;
 
             case GameAction.Skip:
                 if (firstPlay)
                 {
-                    UpdateLog($"{currentPlayer.Name} was skipped. {playerRotation.PeekNext().Name} is first!");
+                    UpdateLog($"{currentPlayer.Name} was skipped, {playerRotation.PeekNext().Name} is first.");
                 }
                 else
                 {
-                    UpdateLog($"{currentPlayer.Name} skipped {nextPlayer.Name}!");
+                    UpdateLog($"{currentPlayer.Name} skipped {nextPlayer.Name}.");
                     playerRotation.Next();
                 }
                 break;
@@ -418,29 +416,43 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
                 if (firstPlay)
                 {
-                    UpdateLog($"Draw Two on first play! {nextPlayer.Name} takes 2 cards! {playerRotation.PeekNext().Name} starts!");
+                    UpdateLog($"Draw Two on first play. {nextPlayer.Name} takes 2 cards. {playerRotation.PeekNext().Name} starts.");
                 }
                 else
                 {
-                    UpdateLog($"{nextPlayer.Name} must Draw Two! Skipping {nextPlayer.Name}!");
+                    UpdateLog($"{nextPlayer.Name} must Draw Two. Skipping {nextPlayer.Name}.");
                     playerRotation.Next();
                 }
                 break;
             case GameAction.DrawFour:
-                // In the event that a Draw Four is pulled with 3 or less cards in the discard we need to handle that.
-                for (int i = 0; i < 4; i++)
+                UpdateLog($"Waiting on {nextPlayer.Name} to challenge or decline.");
+                if (nextPlayer == LocalPlayerReference)
                 {
-                    nextPlayer.AddCard(TakeFromDealPile(true));
+                    var challengePrefab = Instantiate(challengeDrawFourPrefab, Vector3.zero, Quaternion.identity);
+                    var drawFourLogic = challengePrefab.GetComponentInChildren<ChallengeDrawFourLogic>();
+                    drawFourLogic.challengeButton.onClick.AddListener(() =>
+                    {
+                        photonView.RPC("ChallengePlay", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
+                        PhotonNetwork.SendAllOutgoingCommands();
+                        GameObject.Destroy(challengePrefab);
+                    });
+
+                    drawFourLogic.declineButton.onClick.AddListener(() =>
+                    {
+                        photonView.RPC("DeclineChallenge", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
+                        PhotonNetwork.SendAllOutgoingCommands();
+                        GameObject.Destroy(challengePrefab);
+                    });
+                    // Display the modal here    
                 }
-                UpdateLog($"{nextPlayer.Name} must Draw Four! Skipping {nextPlayer.Name}!");
-                playerRotation.Next();
+
                 break;
             case GameAction.DrawAndSkip:
-                UpdateLog($"{currentPlayer.Name} did not draw a playable card! {playerRotation.PeekNext().Name} is next!");
+                UpdateLog($"{currentPlayer.Name} did not draw a playable card. {playerRotation.PeekNext().Name} is next.");
                 currentPlayer.AddCard(TakeFromDealPile());
                 break;
             case GameAction.DrawAndPlayOnce:
-                CustomLogger.Log($"{currentPlayer.Name} chose DrawAndPlayOnce!");
+                CustomLogger.Log($"{currentPlayer.Name} chose DrawAndPlayOnce.");
                 currentPlayer.AddCard(TakeFromDealPile());
                 // Move the player cursor back to the previous player so this player can go again.
                 playerRotation.Prev();
@@ -448,19 +460,32 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
             case GameAction.Wild:
                 if (!firstPlay)
                 {
-                    UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed.WildColor} Wild!");
+                    UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed.WildColor} Wild.");
                 }
                 break;
             case GameAction.NextPlayer:
             // In this case we just let it slide to the next player by using the loop.
             default:
-                UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed}");
+                UpdateLog($"{currentPlayer.Name} played a {cardBeingPlayed}.");
                 break;
         }
 
         audioSource.clip = clipToPlay;
         audioSource.Play();
 
+    }
+
+    void ExecuteDrawFour(LocalPlayerBase<Player> nextPlayer, bool skipPlayer = true)
+    {
+        // In the event that a Draw Four is pulled with 3 or less cards in the discard we need to handle that.
+        for (int i = 0; i < 4; i++)
+        {
+            nextPlayer.AddCard(TakeFromDealPile(true));
+        }
+        if (skipPlayer)
+        {
+            AdvanceNextPlayer();
+        }
     }
 
 }

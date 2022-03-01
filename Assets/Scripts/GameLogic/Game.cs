@@ -1,20 +1,20 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Assets.Scripts;
+using Assets.Scripts.Common;
+using ExitGames.Client.Photon;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using TMPro;
-using System.Threading.Tasks;
-using System.Threading;
-using Photon.Realtime;
-using Photon.Pun;
-using ExitGames.Client.Photon;
-using Assets.Scripts;
-using UnityEngine.UI;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
-using System.Collections.Concurrent;
-using Assets.Scripts.Common;
+using UnityEngine.UI;
 
 public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
@@ -25,12 +25,13 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private readonly Card.CardColor[] cardColorArray = new Card.CardColor[] { Card.CardColor.Red, Card.CardColor.Green, Card.CardColor.Blue, Card.CardColor.Yellow };
     private readonly List<AudioClip> cardPlaySounds = new List<AudioClip>();
     private readonly IDictionary<LocalPlayerBase<Player>, int> playerScore = new Dictionary<LocalPlayerBase<Player>, int>();
-    
+
     private GameOptions gameOptions;
 
     private Toggle playerToggle;
     private Button unoButton;
-    private Button challengeButton;
+    private Button challengeUnoButton;
+    private Button challengePlayButton;
     private Button leaveButton;
 
     private string lastUpdateGuid = string.Empty;
@@ -46,6 +47,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private GameObject playerPrefab;
     private GameObject computerPlayerPrefab;
     private GameObject winnerBannerPrefab;
+    private GameObject challengeDrawFourPrefab;
     private GameObject wildCardSelectPrefab;
     private GameObject winnerBannerPrefabToDestroy;
 
@@ -69,6 +71,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AssetReference dimmableCardReference;
     public AssetReference winnerBanner;
     public AssetReference wildCardSelect;
+    public AssetReference challengeDrawFour;
     public AudioSource audioSource;
     public AudioClip playerWin;
     public AudioClip playerTurn;
@@ -97,8 +100,23 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
     }
 
+    private float pingRate = 1000.0f;
+    private float pingAccumulator = 0.0f;
+
+
+    void Ping(float delta)
+    {
+        pingAccumulator += delta;
+        if (pingAccumulator > pingRate)
+        {
+            PhotonNetwork.SendAllOutgoingCommands();
+            pingAccumulator = 0.0f;
+        }
+    }
     void FixedUpdate()
     {
+        Ping(Time.fixedDeltaTime);
+
         Vector2 screenSize = new Vector2(Screen.width, Screen.height);
         if (lastScreenSize != screenSize)
         {

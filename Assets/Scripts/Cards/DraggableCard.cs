@@ -47,7 +47,7 @@ public class DraggableCard : Card
         // This is a guard t make sure we don't do something while a UI component is active
         if (EventSystem.current.IsPointerOverGameObject()) return;
         var dragPosition = Input.mousePosition;
-        if ((Time.time - dragTime) >= dragDelay || Mathf.Abs((mousePosition - dragPosition).magnitude) > 5f)
+        if ((Time.time - dragTime) >= dragDelay || Mathf.Abs((mousePosition - dragPosition).magnitude) > dragStartThreshold)
         {
             var cardPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             cardPosition.z = 0;
