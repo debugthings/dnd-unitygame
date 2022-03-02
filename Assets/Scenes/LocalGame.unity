@@ -640,6 +640,11 @@ MonoBehaviour:
     m_SubObjectName: 
     m_SubObjectType: 
     m_EditorAssetChanged: 0
+  pleaseWaitReference:
+    m_AssetGUID: 2a2b278059efdde698e79e1bdb3325b1
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   audioSource: {fileID: 866992789}
   playerWin: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
   playerTurn: {fileID: 8300000, guid: 0c008ee3ee72a4362a35be25fa5de043, type: 3}

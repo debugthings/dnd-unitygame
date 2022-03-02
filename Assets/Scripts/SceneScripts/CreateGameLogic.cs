@@ -1,5 +1,6 @@
 ﻿using System;
 using Assets.Scripts;
+using Assets.Scripts.Common;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
@@ -44,7 +45,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
 
     public override void OnConnectedToMaster()
     {
-        Debug.Log($"Connected to master {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})");
+        CustomLogger.Log($"Connected to master {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})");
         PhotonNetwork.AutomaticallySyncScene = true;
         var msgText = $"Connected: {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})";
         var msg = connectedMessage.GetComponent<TMPro.TMP_Text>();
@@ -56,7 +57,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
 
     public override void OnConnected()
     {
-        Debug.Log($"Connected to {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})");
+        CustomLogger.Log($"Connected to {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})");
         base.OnConnected();
     }
 
@@ -67,7 +68,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
         var msgText = $"Disconnected from {PhotonNetwork.ServerAddress} ({PhotonNetwork.CloudRegion})\r\n{cause}";
         msg.text = msgText;
         errorMessage.SetActive(true);
-        Debug.Log(msgText);
+        CustomLogger.Log(msgText);
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -85,7 +86,7 @@ public class CreateGameLogic : MonoBehaviourPunCallbacks
             var msgText = $"User name must not be empty.";
             msg.text = msgText;
             errorMessage.SetActive(true);
-            Debug.Log(msgText);
+            CustomLogger.Log(msgText);
             return;
         }
         // Try to create the room in the default lobby.

@@ -149,7 +149,8 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
-        // Debug.Log($"Adding card {cardToAdd} for {this.Name}");
+        // CustomLogger.Log($"Adding card {cardToAdd} for {this.Name}");
+        CustomLogger.Log($"Adding card {cardToAdd} for {this.Name}");
         this.Hand.Add(cardToAdd);
         HandChangedEvent(this, cardToAdd);
     }
@@ -164,7 +165,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         Array.Sort(cardsToDisplay);
 
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
 
         if (startingPosition.Equals(Vector3.negativeInfinity))
         {
@@ -255,7 +256,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public virtual void DimCards(bool dim)
     {
-        // Debug.Log($"Dimming cards for {this.Name}");
+        // CustomLogger.Log($"Dimming cards for {this.Name}");
         foreach (var item in Hand)
         {
             if (item.tag == "Dimmable")

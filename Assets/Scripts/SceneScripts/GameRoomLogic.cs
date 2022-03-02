@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Text;
 using Assets.Scripts;
+using Assets.Scripts.Common;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
@@ -20,7 +21,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 
     void Start()
     {
-        Debug.Log($"Game room logic started.");
+        CustomLogger.Log($"Game room logic started.");
         StartupRoom();
         var button = startGame.GetComponent<Button>();
 
@@ -32,7 +33,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log($"Client is master client, setting button to be a start button.");
+            CustomLogger.Log($"Client is master client, setting button to be a start button.");
             button.onClick.AddListener(() =>
             {
                 startGameWhenAllAreReady = true;
@@ -43,7 +44,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
         }
         else
         {
-            Debug.Log($"Client is not the master client, setting button to be a leave button.");
+            CustomLogger.Log($"Client is not the master client, setting button to be a leave button.");
             var text = button.GetComponentInChildren<TMPro.TMP_Text>();
             text.text = "Leave";
             button.onClick.AddListener(() =>
@@ -75,7 +76,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     private static void StartGame()
     {
         PhotonNetwork.CurrentRoom.IsOpen = false;
-        Debug.Log($"Starting game from master client.");
+        CustomLogger.Log($"Starting game from master client.");
         var hashTable = new ExitGames.Client.Photon.Hashtable
         {
             [Constants.GameStarted] = true
@@ -95,23 +96,23 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 
     public override void OnConnected()
     {
-        Debug.Log($"On connected called");
+        CustomLogger.Log($"On connected called");
         base.OnConnected();
     }
 
     public override void OnConnectedToMaster()
     {
-        Debug.Log($"On connected to master called");
+        CustomLogger.Log($"On connected to master called");
         base.OnConnectedToMaster();
     }
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($"On joined room called");
+        CustomLogger.Log($"On joined room called");
         StartupRoom();
         if (PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(Constants.GameStarted))
         {
-            Debug.Log($"Game started cannot join.");
+            CustomLogger.Log($"Game started cannot join.");
         }
         base.OnJoinedRoom();
     }
@@ -123,14 +124,14 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
 
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
-        Debug.Log($"{newPlayer} joined room {PhotonNetwork.CurrentRoom.Name}");
+        CustomLogger.Log($"{newPlayer} joined room {PhotonNetwork.CurrentRoom.Name}");
         UpdatePlayerList();
         base.OnPlayerEnteredRoom(newPlayer);
     }
 
     public override void OnPlayerLeftRoom(Photon.Realtime.Player newPlayer)
     {
-        Debug.Log($"{newPlayer} left room {PhotonNetwork.CurrentRoom.Name}");
+        CustomLogger.Log($"{newPlayer} left room {PhotonNetwork.CurrentRoom.Name}");
         
         UpdatePlayerList();
         base.OnPlayerLeftRoom(newPlayer);

@@ -181,7 +181,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex.ToString());
+            CustomLogger.Log(ex.ToString());
         }
         finally
         {
@@ -199,7 +199,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex.ToString());
+            CustomLogger.Log(ex.ToString());
         }
         finally
         {
@@ -216,7 +216,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex.ToString());
+            CustomLogger.Log(ex.ToString());
         }
         finally
         {

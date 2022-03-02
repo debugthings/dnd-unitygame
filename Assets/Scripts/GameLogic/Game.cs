@@ -50,12 +50,12 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     private GameObject challengeDrawFourPrefab;
     private GameObject wildCardSelectPrefab;
     private GameObject winnerBannerPrefabToDestroy;
+    private GameObject pleaseWaitPrefab;
 
     // Used to calculate screen resize events
     private Vector2 lastScreenSize;
 
     private LocalPlayerBase<Player> lastPlayer;
-
 
     // The two decks that handle cards
     public CardDeck dealDeck;
@@ -72,6 +72,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     public AssetReference winnerBanner;
     public AssetReference wildCardSelect;
     public AssetReference challengeDrawFour;
+    public AssetReference pleaseWaitReference;
     public AudioSource audioSource;
     public AudioClip playerWin;
     public AudioClip playerTurn;

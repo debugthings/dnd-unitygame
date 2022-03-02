@@ -325,7 +325,7 @@ public class Card : CardAnimator, IComparable<Card>
         this.CardRandom = cardRandom;
         this.Color = color;
         this.Value = value;
-        // Debug.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
+        // CustomLogger.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
         if (this.Color != CardColor.Special)
         {
             spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
@@ -333,7 +333,7 @@ public class Card : CardAnimator, IComparable<Card>
             spriteHandleBack.Completed += LoadCardBackSpriteToClass;
             AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
             spriteHandle.Completed += LoadCardFrontSpriteToClass;
-            // Debug.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
+            // CustomLogger.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
         }
     }
 
@@ -367,7 +367,7 @@ public class Card : CardAnimator, IComparable<Card>
     {
         if (Color == CardColor.Wild)
         {
-            // Debug.Log($"Set wild color value of {this} {CardRandom} to {color}");
+            // CustomLogger.Log($"Set wild color value of {this} {CardRandom} to {color}");
             WildColor = color;
         }
     }

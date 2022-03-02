@@ -9,8 +9,7 @@ using UnityEngine.AddressableAssets;
 
 public class NetworkPlayer : LocalPlayerBase<Player>
 {
-
-    private List<GameObject> dimmableCardList = new List<GameObject>();
+    private List<GameObject> dimmableCardList;
     public AssetReference dimmableCardRef;
     public TextMeshProUGUI playerNameObject;
     public GameObject gradeint;
@@ -35,6 +34,7 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     }
     protected override void InitializePlayer()
     {
+        dimmableCardList = new List<GameObject>();
         base.InitializePlayer();
     }
 
@@ -54,11 +54,12 @@ public class NetworkPlayer : LocalPlayerBase<Player>
 
     public override void AddCard(Card cardToAdd)
     {
+
         cardToAdd.Hide();
         cardToAdd.transform.SetParent(this.transform);
-        dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
         base.AddCardToHand(cardToAdd);
-
+        dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
+        CustomLogger.Log($"Dimmable card list count {dimmableCardList.Count}");
     }
 
     public override Card PlayCard(Card cardToPlay, Card cardToPlayAgainst, bool removeFromHand = true)
@@ -80,7 +81,7 @@ public class NetworkPlayer : LocalPlayerBase<Player>
 
     public override void RemoveCard(Card cardToRemove)
     {
-        CustomLogger.Log($"Removing {cardToRemove} from {this.Name} hand");
+        CustomLogger.Log($"Removing dimmed card from {this.Name} hand in NetworkPlayer");
 
         var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
         if (dimmableCardToRemove != null)
@@ -99,13 +100,32 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     private void FixupCardPositions(PlayerStatus hasLeft)
     {
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
+
+        // In some cases we can see wh
+        if (dimmableCardList.Count < Hand.Count)
+        {
+            for (int i = 0; i < Hand.Count - dimmableCardList.Count; i++)
+            {
+                dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
+            }
+        }
+        else if (dimmableCardList.Count > Hand.Count)
+        {
+            for (int i = 0; i < dimmableCardList.Count - Hand.Count; i++)
+            {
+                var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
+                if (dimmableCardToRemove != null)
+                {
+                    Destroy(dimmableCardToRemove);
+                    dimmableCardList.RemoveAt(0);
+                }
+            }
+        }
 
         // Add the player name and make it parallel to the screen
         switch (hasLeft)
         {
-
-
             case PlayerStatus.INACTIVE:
                 SetName(Name, "DISCONNECTED");
                 break;
@@ -124,7 +144,7 @@ public class NetworkPlayer : LocalPlayerBase<Player>
         }
 
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
 
         // Add the player name and make it parallel to the screen
         float cardsStartingPositionBase = Math.Min(dimmableCardList.Count - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;

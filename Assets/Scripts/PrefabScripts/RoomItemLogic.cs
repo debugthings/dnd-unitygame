@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Assets.Scripts.Common;
 using Photon.Pun;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,7 +34,7 @@ public class RoomItemLogic : MonoBehaviourPunCallbacks
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        Debug.Log($"Unable to join room {roomNameText.ToLower()}\r\n{message}");
+        CustomLogger.Log($"Unable to join room {roomNameText.ToLower()}\r\n{message}");
         var msgText = $@"Unable to join room {roomNameText.ToLower()}.
 
 {message}";
@@ -45,7 +46,7 @@ public class RoomItemLogic : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($"Joined game room {roomNameText.ToLower()}.");
+        CustomLogger.Log($"Joined game room {roomNameText.ToLower()}.");
         JoinOrCreateAction();
         base.OnJoinedRoom();
     }

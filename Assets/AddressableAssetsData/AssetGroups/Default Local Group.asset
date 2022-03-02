@@ -377,6 +377,10 @@ MonoBehaviour:
     m_Address: Assets/Prefabs/ChallengeWildDrawFour.prefab
     m_ReadOnly: 0
     m_SerializedLabels: []
+  - m_GUID: 2a2b278059efdde698e79e1bdb3325b1
+    m_Address: Assets/Prefabs/PleaseWait.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: ab0f2e2408961824e914f4504ec0c942, type: 2}
   m_SchemaSet:

@@ -161,6 +161,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var drawFourOperation = challengeDrawFour.LoadAssetAsync<GameObject>();
         challengeDrawFourPrefab = await drawFourOperation.Task;
 
+        CustomLogger.Log("Loading Challenge Draw Four Prefab");
+        var pleaseWaitOperation = pleaseWaitReference.LoadAssetAsync<GameObject>();
+        pleaseWaitPrefab = await pleaseWaitOperation.Task;
+
     }
 
     private void LoadAllSounds()
@@ -242,6 +246,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 localPlayer.SetName(player.Value.NickName, string.Empty);
                 LocalPlayerReference = localPlayer;
                 localPlayer.SetNetworkPlayerObject(photonPlayer);
+                localPlayer.MaxNumberOfCardsInRow = 8;
 
                 localPlayer.HandChangedEvent += new EventHandler<Card>(delegate (object o, Card c)
                 {

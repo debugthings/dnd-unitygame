@@ -20,8 +20,11 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
     private HashSet<string> rpcCalls = new HashSet<string>();
 
+    private GameObject pleaseWait;
+
     private async void SendMoveToRPC(Card cardToPlay, LocalPlayerBase<Player> playerMakingMove)
     {
+        pleaseWait = Instantiate(pleaseWaitPrefab, cardToPlay.transform.position, Quaternion.identity);
         var updateGuid = Guid.NewGuid().ToString();
         CustomLogger.Log($"Calling SendMoveToAllPlayers with {updateGuid}");
         await Task.Delay(100); // Adding a simple delay to help throttle the messages coming in
@@ -35,6 +38,11 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
     void SendMoveToAllPlayers(int playerActorNumber, int cardRandom, Card.CardColor cardColor, Card.CardColor cardWildColor, Card.CardValue cardValue, string updateGuid)
     {
+        if (pleaseWait != null)
+        {
+            GameObject.Destroy(pleaseWait);
+            pleaseWait = null;
+        }
         if (rpcCalls.Contains(updateGuid)) return;
         rpcCalls.Add(updateGuid);
         // So we don't get a number of these things happening while we're in a loop we need to 
@@ -145,6 +153,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         if (rpcCalls.Contains(updateGuid)) return;
         rpcCalls.Add(updateGuid);
+
         // So we don't get a number of these things happening while we're in a loop we need to 
         // stop the message pump to be sure we don't invalidate state.
         PhotonNetwork.IsMessageQueueRunning = false;

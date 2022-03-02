@@ -34,14 +34,14 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
 
         if (Application.isEditor)
         {
-            Debug.Log("Running expected random seed from editor.");
+            CustomLogger.Log("Running expected random seed from editor.");
             seedTicks = 1851936439;
         }
         else
         {
             seedTicks = (new System.Random()).Next(0, int.MaxValue);
         }
-        Debug.Log($"Using seed {seedTicks}");
+        CustomLogger.Log($"Using seed {seedTicks}");
         rand.InitState(Convert.ToUInt32(seedTicks));
 
     }
@@ -104,13 +104,13 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
 
     public override void OnCreatedRoom()
     {
-        Debug.Log($"Room {gameRoomName.text.ToLower()} created. Waiting to join.");
+        CustomLogger.Log($"Room {gameRoomName.text.ToLower()} created. Waiting to join.");
         base.OnCreatedRoom();
     }
 
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
-        Debug.Log($"Unable to create room {gameRoomName.text.ToLower()}\r\n{message}");
+        CustomLogger.Log($"Unable to create room {gameRoomName.text.ToLower()}\r\n{message}");
         var msgText = $@"Unable to create room {gameRoomName.text.ToLower()}.
 
 {message}";
@@ -122,7 +122,7 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        Debug.Log($"Unable to join room {gameRoomName.text.ToLower()}\r\n{message}");
+        CustomLogger.Log($"Unable to join room {gameRoomName.text.ToLower()}\r\n{message}");
         var msgText = $@"Unable to join room {gameRoomName.text.ToLower()}.
 
 {message}";
@@ -134,7 +134,7 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        Debug.Log($"Joined game room {gameRoomName.text.ToLower()}.");
+        CustomLogger.Log($"Joined game room {gameRoomName.text.ToLower()}.");
         JoinOrCreateAction();
         base.OnJoinedRoom();
     }
