@@ -6,14 +6,22 @@ namespace Assets.Scripts.Common
 {
     public static class CustomLogger
     {
-        public static void Log(string log)
+        public static void Log(string log, [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
         {
-            Debug.Log(log);
+            if (!string.IsNullOrEmpty(memberName))
+            {
+                Debug.Log($"{memberName}: {log}");
+            }
+            else
+            {
+                Debug.Log($"{log}");
+            }
+
         }
 
-        public static void Log(Exception ex)
+        public static void Log(Exception ex, [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
         {
-            Debug.Log(ex);
+            Log(ex, memberName);
         }
     }
 }

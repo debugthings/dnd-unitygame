@@ -4,25 +4,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Assets.Scripts.Common;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.EventSystems;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Card : CardAnimator, IComparable<Card>
 {
     private SpriteRenderer spriteRenderer;
+
+    // Used to return the card back to it's orginal position
+    protected Vector3 originalPosition;
+    protected Quaternion originalRotation;
+
+    // Used to mark the center of the deal and discard decks
+    protected Vector3 dealDeckPosition, discardDeckPosition;
+    protected bool cardIsDimmed;
     private const string spriteRoot = "Assets/Card Sprites/Uno_";
     private const string spriteBack = "Assets/Card Sprites/Uno_Back.png";
 
     private const string fileExtension = ".png";
     private const string CardBack = "back";
     private const string CardFront = "front";
-
     private static object lockObject = new object();
     private static GameObject drawCardGameObject;
     private static GameObject emptyCardGameObject;
     private static GameObject firstplayCardGameObject;
 
+    private Color lastDimColor = UnityEngine.Color.white;
 
     private Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
 
@@ -82,12 +92,20 @@ public class Card : CardAnimator, IComparable<Card>
 
     public void Dim(bool dim)
     {
+        cardIsDimmed = dim;
         var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
+        lastDimColor = dimColor;
+        spriteRenderer.color = dimColor;
+    }
+
+    public void Overlay(bool dim)
+    {
+        var dimColor = dim ? new UnityEngine.Color(1.0f, 0.65f, 0.0f, 0.9f) : lastDimColor;
         spriteRenderer.color = dimColor;
     }
 
     // Start is called before the first frame update
-    void Start()
+    protected virtual void Start()
     {
         if (drawCardGameObject == null)
         {
@@ -129,6 +147,11 @@ public class Card : CardAnimator, IComparable<Card>
         }
     }
 
+    protected virtual void Update()
+    {
+        ShowCard();
+    }
+
     public void Hide()
     {
         gameObject.SetActive(false);
@@ -148,6 +171,7 @@ public class Card : CardAnimator, IComparable<Card>
         string value = string.Empty;
 
         string color;
+
         switch (Color)
         {
             case Card.CardColor.Red:
@@ -209,11 +233,7 @@ public class Card : CardAnimator, IComparable<Card>
         string valueAppend = string.IsNullOrEmpty(value) ? "" : $"_{ value}";
         return $"{color}{valueAppend}";
     }
-    // Update is called once per frame
-    void Update()
-    {
-        ShowCard();
-    }
+
 
     /// <summary>
     /// Shows the front or back of the card depending on the flip state
@@ -277,13 +297,17 @@ public class Card : CardAnimator, IComparable<Card>
     }
 
     /// <summary>
-    /// Flips the card
+    /// Flips the card from it's current state
     /// </summary>
     public void FlipCardOver()
     {
         showCarFace = !showCarFace;
     }
 
+    /// <summary>
+    /// Shows the face of the card
+    /// </summary>
+    /// <param name="faceUp">true for face up; false for face down</param>
     public void SetCardFaceUp(bool faceUp)
     {
         showCarFace = faceUp;
@@ -301,7 +325,7 @@ public class Card : CardAnimator, IComparable<Card>
         this.CardRandom = cardRandom;
         this.Color = color;
         this.Value = value;
-        // Debug.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
+        // CustomLogger.Log($"SetProps CardRandom = {CardRandom}\tColor = {Color}\tValue = {Value}");
         if (this.Color != CardColor.Special)
         {
             spriteRenderer = gameObject.GetComponent<SpriteRenderer>();
@@ -309,7 +333,7 @@ public class Card : CardAnimator, IComparable<Card>
             spriteHandleBack.Completed += LoadCardBackSpriteToClass;
             AsyncOperationHandle<Sprite[]> spriteHandle = Addressables.LoadAssetAsync<Sprite[]>($"{spriteRoot}{GenerateFileName()}{fileExtension}");
             spriteHandle.Completed += LoadCardFrontSpriteToClass;
-            // Debug.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
+            // CustomLogger.Log($"SetProps CardFace = {spriteRoot}{GenerateFileName()}{fileExtension}");
         }
     }
 
@@ -319,10 +343,20 @@ public class Card : CardAnimator, IComparable<Card>
     /// <param name="cardRandom">The random value of the card set by the game engine</param>
     /// <param name="value">The value this card should be</param>
     /// <param name="color">The color this card should be</param>
-    public void SetProps(int cardRandom, CardValue value, string color)
+    public void SetProps(int cardRandom, CardValue value, CardColor color, Vector3 dealDeckPosition, Vector3 discardDeckPosition)
     {
-        var newColor = (CardColor)Enum.Parse(typeof(CardColor), color);
-        SetProps(cardRandom, value, newColor);
+        this.dealDeckPosition = dealDeckPosition;
+        this.discardDeckPosition = discardDeckPosition;
+        SetProps(cardRandom, value, color);
+    }
+
+    /// <summary>
+    /// Method will reset the starting position and rotation of the card if it's not played
+    /// </summary>
+    public void SetPosition()
+    {
+        originalPosition = this.transform.position;
+        originalRotation = this.transform.rotation;
     }
 
     /// <summary>
@@ -333,7 +367,7 @@ public class Card : CardAnimator, IComparable<Card>
     {
         if (Color == CardColor.Wild)
         {
-            // Debug.Log($"Set wild color value of {this} {CardRandom} to {color}");
+            // CustomLogger.Log($"Set wild color value of {this} {CardRandom} to {color}");
             WildColor = color;
         }
     }

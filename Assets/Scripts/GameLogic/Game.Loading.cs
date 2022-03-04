@@ -89,9 +89,10 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
     {
         GameObject instantiatedCardObject = Instantiate(cardPrefab, dealDeck.transform);
         var instantiatedCard = instantiatedCardObject.GetComponent<Card>();
-        instantiatedCard.SetProps(randomValue, cardValue, cardColor);
+        instantiatedCard.SetProps(randomValue, cardValue, cardColor, dealDeck.transform.position, discardDeck.transform.position);
         instantiatedCard.name = instantiatedCard.ToString();
         // Log($"Built {instantiatedCard.name}");
+        CustomLogger.Log($"Rand: {randomValue} Card: {instantiatedCard}");
         dealDeck.AddCardToDeck(instantiatedCard, false);
     }
 
@@ -156,6 +157,14 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         var wildCardOperation = wildCardSelect.LoadAssetAsync<GameObject>();
         wildCardSelectPrefab = await wildCardOperation.Task;
 
+        CustomLogger.Log("Loading Challenge Draw Four Prefab");
+        var drawFourOperation = challengeDrawFour.LoadAssetAsync<GameObject>();
+        challengeDrawFourPrefab = await drawFourOperation.Task;
+
+        CustomLogger.Log("Loading Challenge Draw Four Prefab");
+        var pleaseWaitOperation = pleaseWaitReference.LoadAssetAsync<GameObject>();
+        pleaseWaitPrefab = await pleaseWaitOperation.Task;
+
     }
 
     private void LoadAllSounds()
@@ -211,7 +220,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 
             // Scale down when over a specific size
             var scale = numOfPlayers >= 6 ? 0.75 : 1;
-            var maxNumberOfCards = numOfPlayers >= 6 ? 8 : 10;
+            var maxNumberOfCards = numOfPlayers >= 6 ? 6 : 7;
 
             CustomLogger.Log($"Creating player {player.Value.NickName} with actor number {player.Value.ActorNumber}");
 
@@ -237,6 +246,7 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                 localPlayer.SetName(player.Value.NickName, string.Empty);
                 LocalPlayerReference = localPlayer;
                 localPlayer.SetNetworkPlayerObject(photonPlayer);
+                localPlayer.MaxNumberOfCardsInRow = 8;
 
                 localPlayer.HandChangedEvent += new EventHandler<Card>(delegate (object o, Card c)
                 {
@@ -253,19 +263,26 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
                     TogglePlayableDimming(false);
                 });
 
-                challengeButton = localPlayer.challengeButton;
+                challengeUnoButton = localPlayer.challengeUnoButton;
 
-                challengeButton.onClick.AddListener(() =>
+                challengeUnoButton.onClick.AddListener(() =>
                 {
-                    photonView.RPC("ChallengePlay", RpcTarget.AllViaServer, LocalPlayerReference.Player);
+                    photonView.RPC("ChallengeUno", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
                     PhotonNetwork.SendAllOutgoingCommands();
                 });
 
+                
                 unoButton = localPlayer.unoButton;
                 unoButton.onClick.AddListener(() =>
                 {
-                    photonView.RPC("CallUno", RpcTarget.AllViaServer, localPlayer.Player);
+                    photonView.RPC("CallUno", RpcTarget.AllBufferedViaServer, LocalPlayerReference.Player, Guid.NewGuid().ToString());
                     PhotonNetwork.SendAllOutgoingCommands();
+                });
+
+                leaveButton = localPlayer.leaveButton;
+                leaveButton.onClick.AddListener(() =>
+                {
+                    localPlayer.LeaveGame(photonView);
                 });
 
                 playerRotation.Add(localPlayer);

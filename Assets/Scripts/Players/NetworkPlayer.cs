@@ -1,16 +1,15 @@
-﻿using Photon.Realtime;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using Assets.Scripts.Common;
+using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
 public class NetworkPlayer : LocalPlayerBase<Player>
 {
-
-    private List<GameObject> dimmableCardList = new List<GameObject>();
+    private List<GameObject> dimmableCardList;
     public AssetReference dimmableCardRef;
     public TextMeshProUGUI playerNameObject;
     public GameObject gradeint;
@@ -35,6 +34,7 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     }
     protected override void InitializePlayer()
     {
+        dimmableCardList = new List<GameObject>();
         base.InitializePlayer();
     }
 
@@ -54,32 +54,34 @@ public class NetworkPlayer : LocalPlayerBase<Player>
 
     public override void AddCard(Card cardToAdd)
     {
+
         cardToAdd.Hide();
         cardToAdd.transform.SetParent(this.transform);
-        dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
         base.AddCardToHand(cardToAdd);
-
+        dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
+        CustomLogger.Log($"Dimmable card list count {dimmableCardList.Count}");
     }
 
-    public override Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addToHand, bool removeCard)
+    public override Card PlayCard(Card cardToPlay, Card cardToPlayAgainst, bool removeFromHand = true)
     {
-        if (myCard.CanPlay(cardToPlayAgainst))
+        CustomLogger.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+        if (cardToPlay.CanPlay(cardToPlayAgainst))
         {
-            // Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
-            myCard.Unhide();
-            myCard.FlipCardOver();
-            if (removeCard)
+            CustomLogger.Log($"We can play {cardToPlay} against {cardToPlayAgainst}");
+            cardToPlay.Unhide();
+            cardToPlay.FlipCardOver();
+            if (removeFromHand)
             {
-                RemoveCard(myCard);
+                RemoveCard(cardToPlay);
             }
-            return myCard;
+            return cardToPlay;
         }
         return Card.Empty;
     }
-    
-    public override void RemoveCard(Card cardToReturn)
+
+    public override void RemoveCard(Card cardToRemove)
     {
-        // Debug.Log($"Removing card for {this.Name}");
+        CustomLogger.Log($"Removing dimmed card from {this.Name} hand in NetworkPlayer");
 
         var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
         if (dimmableCardToRemove != null)
@@ -87,27 +89,53 @@ public class NetworkPlayer : LocalPlayerBase<Player>
             Destroy(dimmableCardToRemove);
             dimmableCardList.RemoveAt(0);
         }
-        base.RemoveCard(cardToReturn);
+        base.RemoveCard(cardToRemove);
     }
 
     public override void FixupCardPositions()
     {
-        FixupCardPositions(false);
+        FixupCardPositions(PlayerStatus.ACTIVE);
     }
 
-    private void FixupCardPositions(bool hasLeft)
+    private void FixupCardPositions(PlayerStatus hasLeft)
     {
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
+
+        // In some cases we can see wh
+        if (dimmableCardList.Count < Hand.Count)
+        {
+            for (int i = 0; i < Hand.Count - dimmableCardList.Count; i++)
+            {
+                dimmableCardList.Add(Instantiate(DimmableCardObject, transform));
+            }
+        }
+        else if (dimmableCardList.Count > Hand.Count)
+        {
+            for (int i = 0; i < dimmableCardList.Count - Hand.Count; i++)
+            {
+                var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
+                if (dimmableCardToRemove != null)
+                {
+                    Destroy(dimmableCardToRemove);
+                    dimmableCardList.RemoveAt(0);
+                }
+            }
+        }
 
         // Add the player name and make it parallel to the screen
-        if (hasLeft)
+        switch (hasLeft)
         {
-            SetName(Name, "LEFT GAME");
-        }
-        else
-        {
-            SetName(Name, dimmableCardList.Count.ToString());
+            case PlayerStatus.INACTIVE:
+                SetName(Name, "DISCONNECTED");
+                break;
+            case PlayerStatus.LEFT:
+                SetName(Name, "LEFT GAME");
+                break;
+            case PlayerStatus.ACTIVE:
+            default:
+                SetName(Name, dimmableCardList.Count.ToString());
+                break;
         }
 
         if (Hand.Count > 1)
@@ -116,7 +144,7 @@ public class NetworkPlayer : LocalPlayerBase<Player>
         }
 
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
 
         // Add the player name and make it parallel to the screen
         float cardsStartingPositionBase = Math.Min(dimmableCardList.Count - 1, MaxNumberOfCardsInRow - 1) * horizontalSpacing;
@@ -158,7 +186,6 @@ public class NetworkPlayer : LocalPlayerBase<Player>
 
     public override void DimCards(bool dim)
     {
-        // Debug.Log($"Dimming cards for {this.Name}");
         foreach (var item in dimmableCardList)
         {
             if (item.tag == "Dimmable")
@@ -172,7 +199,12 @@ public class NetworkPlayer : LocalPlayerBase<Player>
 
     public override void PlayerLeftGame()
     {
-        FixupCardPositions(true);
+        FixupCardPositions(PlayerStatus.LEFT);
+    }
+
+    public override void PlayerDisconnected()
+    {
+        FixupCardPositions(PlayerStatus.INACTIVE);
     }
 
     public override void ClearHand()
@@ -189,21 +221,21 @@ public class NetworkPlayer : LocalPlayerBase<Player>
     {
         if (base.CanCallUno(cardToCheck))
         {
-            Debug.Log($"{Name} Set Uno Title Active");
+            CustomLogger.Log($"{Name} Set Uno Title Active");
             UnoTitle.SetActive(true);
         }
         return CalledUno;
     }
 
-    public override Task<bool> AnimateCardToPlayer(Card cardToAnimate)
+    public override bool AnimateCardToPlayer(Card cardToAnimate)
     {
-        return cardToAnimate.AnimateToPosition(transform);
+        return cardToAnimate?.AnimateToPosition(transform) ?? false;
     }
 
-    public override Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
+    public override bool AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck)
     {
-        var dimmableCardToRemove = dimmableCardList.FirstOrDefault();
-        var cardAnimator = dimmableCardToRemove.GetComponent<CardAnimator>();
-        return cardAnimator.AnimateToPosition(discardDeck.transform);
+        var dimmableCardToRemove = dimmableCardList?.FirstOrDefault();
+        var cardAnimator = dimmableCardToRemove?.GetComponent<CardAnimator>();
+        return cardAnimator?.AnimateToPosition(discardDeck.transform) ?? false;
     }
 }

@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 2344751958255755274}
   - component: {fileID: 2344751958255755275}
-  - component: {fileID: -3085730074788725339}
   - component: {fileID: -2730156736690716990}
+  - component: {fileID: 1696776307718503247}
   m_Layer: 0
   m_Name: Card
   m_TagString: Dimmable
@@ -48,6 +48,7 @@ SpriteRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -83,18 +84,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-3085730074788725339
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2344751958255755273}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d6911acb54c32b4198635943576b0b2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!61 &-2730156736690716990
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -121,3 +110,15 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 1.65, y: 2.56}
   m_EdgeRadius: 0
+--- !u!114 &1696776307718503247
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2344751958255755273}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72ca347ed0cd7a6fc9541ed59e97abac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

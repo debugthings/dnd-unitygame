@@ -1,13 +1,22 @@
-﻿using Photon.Realtime;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Assets.Scripts.Common;
+using JetBrains.Annotations;
+using Photon.Realtime;
 using UnityEngine;
 
 public abstract class LocalPlayerBase<T> : MonoBehaviour
 {
+
+    public enum PlayerStatus
+    {
+        ACTIVE,
+        INACTIVE,
+        LEFT
+    }
     protected const float zOrderSpacing = 0.01f;
     protected const float horizontalSpacing = 0.8f;
     protected const float maxJitterTranslation = 0.06f;
@@ -82,22 +91,17 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// </remarks>
     /// <param name="cardToPlayAgainst">The card that is currently being played against.</param>
     /// <returns>The card selected from the player's hand.</returns>
-    public virtual Card PlayCard(Card myCard, Card cardToPlayAgainst, bool addCardToHand, bool removeFromHand = true)
+    public virtual Card PlayCard(Card cardToPlay, Card cardToPlayAgainst, bool removeFromHand = true)
     {
-        if (myCard.CanPlay(cardToPlayAgainst))
+        CustomLogger.Log($"Playing card {cardToPlay} with Id {cardToPlay.CardRandom}");
+        if (cardToPlay != Card.Empty && cardToPlay.CanPlay(cardToPlayAgainst))
         {
-            Debug.Log($"We can play {myCard} against {cardToPlayAgainst}");
+            CustomLogger.Log($"We can play {cardToPlay} against {cardToPlayAgainst}");
             if (removeFromHand)
             {
-                RemoveCard(myCard);
+                RemoveCard(cardToPlay);
             }
-            return myCard;
-        }
-
-        // Only add it if it can't be played...
-        if (addCardToHand)
-        {
-            AddCard(myCard);
+            return cardToPlay;
         }
         return Card.Empty;
     }
@@ -106,7 +110,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     {
         if (Hand.Count > 1)
         {
-            Debug.Log($"{Name} Hand count is greater than 1");
+            CustomLogger.Log($"{Name} Hand count is greater than 1");
             CalledUno = false;
             HasBeenChallenged = false;
         }
@@ -115,7 +119,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public virtual void RemoveCard(Card cardToRemove)
     {
-        // Debug.Log($"Removing {cardToRemove} from {this.Name} hand");
+        CustomLogger.Log($"Removing {cardToRemove} from {this.Name} hand");
         Hand.Remove(cardToRemove);
         HandChangedEvent(this, cardToRemove);
     }
@@ -145,7 +149,8 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
     /// <param name="cardToAdd">The card to add</param>
     protected void AddCardToHand(Card cardToAdd)
     {
-        // Debug.Log($"Adding card {cardToAdd} for {this.Name}");
+        // CustomLogger.Log($"Adding card {cardToAdd} for {this.Name}");
+        CustomLogger.Log($"Adding card {cardToAdd} for {this.Name}");
         this.Hand.Add(cardToAdd);
         HandChangedEvent(this, cardToAdd);
     }
@@ -160,7 +165,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
         Array.Sort(cardsToDisplay);
 
         // We should only fixup the positions when a card is added or 
-        // Debug.Log($"Fixing up card positions for {this.Name}");
+        // CustomLogger.Log($"Fixing up card positions for {this.Name}");
 
         if (startingPosition.Equals(Vector3.negativeInfinity))
         {
@@ -206,6 +211,7 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
                         rand.NextFloat(-maxJitterTranslation, maxJitterTranslation) + (rowNumber * -1.0f),
                         cardNumber);
                     cardToAdd.transform.eulerAngles += Vector3.forward * rand.NextFloat(-maxJitterRotation, maxJitterRotation);
+                    cardToAdd.SetPosition();
                 }
             }
         }
@@ -250,23 +256,23 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public virtual void DimCards(bool dim)
     {
-        // Debug.Log($"Dimming cards for {this.Name}");
+        // CustomLogger.Log($"Dimming cards for {this.Name}");
         foreach (var item in Hand)
         {
             if (item.tag == "Dimmable")
             {
-                var allCards = item.GetComponent<SpriteRenderer>();
-                var dimColor = dim ? UnityEngine.Color.gray : UnityEngine.Color.white;
-                allCards.color = dimColor;
+                item.Dim(dim);
             }
         }
     }
 
     public abstract void PlayerLeftGame();
 
-    public abstract Task<bool> AnimateCardToPlayer(Card cardToAnimate);
+    public abstract void PlayerDisconnected();
 
-    public abstract Task<bool> AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck);
+    public abstract bool AnimateCardToPlayer(Card cardToAnimate);
+
+    public abstract bool AnimateCardToDiscardDeck(Card cardToAnimate, CardDeck discardDeck);
 
 
     public int ScoreHand()
@@ -310,35 +316,54 @@ public abstract class LocalPlayerBase<T> : MonoBehaviour
 
     public bool CanBeChallengedForUno()
     {
-        Debug.Log($"{Name} CanBeChallenged");
+        CustomLogger.Log("Enter");
+        CustomLogger.Log($"{Name}");
         if (!HasBeenChallenged && Hand.Count == 1)
         {
-            Debug.Log($"CanBeChallenged: HasBeenChallenged = {HasBeenChallenged}");
-            Debug.Log($"CanBeChallenged: Hand.Count = {Hand.Count}");
+            CustomLogger.Log($"CanBeChallenged: HasBeenChallenged = {HasBeenChallenged}");
+            CustomLogger.Log($"CanBeChallenged: Hand.Count = {Hand.Count}");
             HasBeenChallenged = true;
-            Debug.Log($"CanBeChallenged: return = true");
+            CustomLogger.Log($"CanBeChallenged: return = true");
             return true;
         }
-        Debug.Log($"CanBeChallenged: return = false");
+        CustomLogger.Log($"CanBeChallenged: return = false");
+        CustomLogger.Log("Enter");
         return false;
     }
 
     public virtual bool CanCallUno(Card cardToCheck)
     {
-        Debug.Log($"{Name} CanCallUno");
-        if (Hand.Count == 2 && Hand.Any(c =>
+        CustomLogger.Log($"Enter");
+        CustomLogger.Log($"{Name}");
+        // Allow a player to call Uno in two ways
+        // The first is pre-emptively when they have two cards and one is playable
+        // The second is if they have only one card
+        if ((Hand.Count == 2 && Hand.Any(c =>
         {
-            Debug.Log($"CanCallUno: Check Card = {c} == {cardToCheck}");
+            CustomLogger.Log($"CanCallUno: Check Card = {c} == {cardToCheck}");
             return c.CanPlay(cardToCheck);
-        }))
+        })) || Hand.Count == 1)
         {
-            Debug.Log($"CanCallUno: Hand.Count = {Hand.Count}");
+            CustomLogger.Log($"Hand.Count = {Hand.Count}");
             CalledUno = true;
         }
-        Debug.Log($"CanCallUno: CalledUno = {CalledUno}");
+
+        CustomLogger.Log($"CalledUno = {CalledUno}");
+        CustomLogger.Log($"Exit");
+
         return CalledUno;
     }
 
+    public bool HandHasColorCardToBePlayed(Card cardToPlay)
+    {
+        foreach (Card item in Hand)
+        {
+            if ((item.Value != Card.CardValue.Wild && item.Color == cardToPlay.Color)
+                    || (item.Value == Card.CardValue.Wild && item.Color == cardToPlay.WildColor))
+                return true;
+        }
+        return false;
+    }
 
 
 }

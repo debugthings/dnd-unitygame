@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Assets.Scripts.Common;
 using UnityEngine;
 
 
@@ -39,7 +40,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     public bool StackGrowsDown { get; set; } = true;
 
-    public float StackZOrderDirection  => this.StackGrowsDown ? cardStackZOrderOffset : -cardStackZOrderOffset;
+    public float StackZOrderDirection => this.StackGrowsDown ? cardStackZOrderOffset : -cardStackZOrderOffset;
     public void AddCardToDeck(T c, bool showCardFace)
     {
         if (c != Card.Empty)
@@ -91,12 +92,40 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
 
     public T TakeTopCard()
     {
-        return deck.Pop();
+        T cardToTake = deck.Pop();
+        CustomLogger.Log(cardToTake.ToString());
+        return cardToTake;
     }
 
     public T PeekTopCard()
     {
-        return deck.Peek();
+        T cardToTake = deck.Peek();
+        CustomLogger.Log(cardToTake.ToString());
+        return cardToTake;
+    }
+
+    public T PeekNthCard(int howMany)
+    {
+        if (howMany > 0)
+        {
+            var tempDeck = new Stack<T>();
+
+            for (int i = 0; i < howMany; i++)
+            {
+                tempDeck.Push(deck.Pop());
+            }
+            
+            T cardToTake = tempDeck.Peek();
+
+            for (int i = 0; i < howMany; i++)
+            {
+                deck.Push(tempDeck.Pop());
+            }
+            CustomLogger.Log(cardToTake.ToString());
+            return cardToTake;
+        }
+        return default(T);
+
     }
 
     public void Shuffle()
@@ -113,6 +142,11 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
             listToShuffle[i] = t;
         }
         deck = new Stack<T>(listToShuffle);
+        foreach (var item in deck)
+        {
+            CustomLogger.Log($"Rand: {item.CardRandom} Card: {item}");
+
+        }
         RepositionAllCards();
     }
 
@@ -182,7 +216,7 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
     /// </summary>
     public void PutCardBackInDeckInRandomPoisiton(T c, int distanceFromTop, int distanceFromBottom)
     {
-        Debug.Log($"Putting card {c} back in random position.");
+        CustomLogger.Log($"Putting card {c} back in random position.");
         // Since we want to preserve the order of the deck we need to pop the required number of cards off the pile
         var unshift = rand.NextInt(distanceFromTop, distanceFromBottom);
         var cards = new Stack<T>();
@@ -200,12 +234,12 @@ public class Deck<T> : MonoBehaviour, IEnumerable<T> where T : Card
         }
     }
 
-    public void ClearDeck() 
+    public void ClearDeck()
     {
         foreach (var item in deck)
         {
             Destroy(item.gameObject);
         }
-        deck.Clear(); 
+        deck.Clear();
     }
 }

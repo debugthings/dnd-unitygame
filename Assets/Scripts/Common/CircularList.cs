@@ -28,36 +28,47 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
     /// <param name="startPosition">What element index to start from.</param>
     public void SetPosition(int startPosition)
     {
-        
         position = UnityEngine.Mathf.Clamp(startPosition, 0, Count - 1);
     }
 
-    public void SetPlayer(T player)
+    /// <summary>
+    /// Move the cursor to the specified object
+    /// </summary>
+    /// <param name="listObject">Object that we need to set the cursor to.</param>
+    public void SetPlayer(T listObject)
     {
-        if (this.Current().Equals(player))
+        if (this.Current().Equals(listObject))
         {
             return;
         }
         else
         {
-            while (!this.Next().Equals(player))
+            while (!this.Next().Equals(listObject))
             {
                 continue;
             }
         }
-
     }
 
+    /// <summary>
+    /// If the current direction is reverse it sets it forward, and vice versa
+    /// </summary>
     public void SwapDirections()
     {
         _moveForward = !_moveForward;
     }
 
+    /// <summary>
+    /// Set the direction to move backwards (monotonically decreasing)
+    /// </summary>
     public new void Reverse()
     {
         _moveForward = false;
     }
 
+    /// <summary>
+    /// Set the direction to move forward (monotonically increasing)
+    /// </summary>
     public void Forward()
     {
         _moveForward = true;
@@ -101,6 +112,10 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
         return ReverseImpl(!_moveForward);
     }
 
+    /// <summary>
+    /// Look ahead to see the next object, but do not advance the cursor.
+    /// </summary>
+    /// <returns>The next object</returns>
     public T PeekNext()
     {
         int nextPosition = position;
@@ -124,6 +139,10 @@ public class CircularList<T, K> : List<T> where T: LocalPlayerBase<K>
 
     }
 
+    /// <summary>
+    /// Look behind to see the previous object, but do not advance the cursor.
+    /// </summary>
+    /// <returns>The previous object</returns>
     public T PeekPrev()
     {
         int nextPosition = position;
