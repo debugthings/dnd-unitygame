@@ -70,9 +70,8 @@ public class LocalPlayer : LocalPlayerBase<Player>
 
     public void LeaveGame(PhotonView photonView)
     {
-        PhotonNetwork.LeaveRoom();
+        PhotonNetwork.LeaveRoom(true);
         PhotonNetwork.SendAllOutgoingCommands();
-        SceneManager.LoadScene("CreateGame", LoadSceneMode.Single);
     }
 
     

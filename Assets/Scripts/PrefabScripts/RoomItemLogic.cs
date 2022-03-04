@@ -32,31 +32,7 @@ public class RoomItemLogic : MonoBehaviourPunCallbacks
         roomName.text = $"{roomNameToSet} ({currentPlayers}/{maxPlayers})";
     }
 
-    public override void OnJoinRoomFailed(short returnCode, string message)
-    {
-        CustomLogger.Log($"Unable to join room {roomNameText.ToLower()}\r\n{message}");
-        var msgText = $@"Unable to join room {roomNameText.ToLower()}.
-
-{message}";
-        // var msg = errorMessage.GetComponent<TMPro.TMP_Text>();
-        // msg.text = msgText;
-        // errorMessage.SetActive(true);
-        base.OnJoinRoomFailed(returnCode, msgText);
-    }
-
-    public override void OnJoinedRoom()
-    {
-        CustomLogger.Log($"Joined game room {roomNameText.ToLower()}.");
-        JoinOrCreateAction();
-        base.OnJoinedRoom();
-    }
-
-    private void JoinOrCreateAction()
-    {
-        PhotonNetwork.LoadLevel("GameRoom");
-    }
-
-    void JoinGameButton()
+      void JoinGameButton()
     {
         // Try to join the room in the default lobby.
         PhotonNetwork.JoinRoom(roomNameText.ToLower());

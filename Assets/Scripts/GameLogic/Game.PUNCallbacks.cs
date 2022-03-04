@@ -20,6 +20,26 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
 {
     private Room cachedRoom;
     #region PUN Callbacks
+
+    public override void OnConnectedToMaster()
+    {
+        CustomLogger.Log($"Back on master so we can do matchmaking.");
+        PhotonNetwork.JoinLobby();
+        base.OnConnectedToMaster();
+    }
+
+    public override void OnLeftRoom()
+    {
+        CustomLogger.Log($"We have left the room.");
+        base.OnLeftRoom();
+    }
+
+    public override void OnJoinedLobby()
+    {
+        PhotonNetwork.LoadLevel("GameLobby");
+        base.OnJoinedLobby();
+    }
+
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         if (!PhotonNetwork.CurrentRoom.Players.ContainsValue(otherPlayer))
@@ -187,8 +207,6 @@ public partial class Game : MonoBehaviourPunCallbacks, IConnectionCallbacks
         {
         }
     }
-
-
     void PlayerDisconnected(Player otherPlayer)
     {
         try

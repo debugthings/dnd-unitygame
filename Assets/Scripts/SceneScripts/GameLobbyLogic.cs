@@ -20,6 +20,8 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
     private Unity.Mathematics.Random rand = new Unity.Mathematics.Random();
     private int seedTicks = 0;
 
+    private Dictionary<string, RoomInfo> activeRoomList = new Dictionary<string, RoomInfo>();
+
     public AssetReference roomItemListPrefabReference;
 
     private GameObject roomItemListPrefab;
@@ -94,11 +96,27 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
         // Add the new
         foreach (var item in roomList)
         {
+            if (item.IsVisible && item.IsOpen)
+            {
+                activeRoomList[item.Name] = item;
+            }
+
+            if (item.RemovedFromList)
+            {
+                activeRoomList.Remove(item.Name);
+            }
+        }
+
+        // emove the old
+
+        foreach (var item in activeRoomList.Values)
+        {
             var itemObject = Instantiate(roomItemListPrefab, Vector3.zero, Quaternion.identity, roomListObject.transform);
             var itemObjectScript = itemObject.GetComponentInChildren<RoomItemLogic>();
             itemObjectScript.SetRoomRame(item.Name, item.PlayerCount, item.MaxPlayers);
 
         }
+
         base.OnRoomListUpdate(roomList);
     }
 
@@ -134,7 +152,7 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
-        CustomLogger.Log($"Joined game room {gameRoomName.text.ToLower()}.");
+        CustomLogger.Log($"Joined game room {gameRoomName.text.ToLower()} from lobby.");
         JoinOrCreateAction();
         base.OnJoinedRoom();
     }
@@ -144,7 +162,7 @@ public class GameLobbyLogic : MonoBehaviourPunCallbacks
         PhotonNetwork.LoadLevel("GameRoom");
     }
 
-    
+
 
     // Update is called once per frame
     void Update()

@@ -12,8 +12,7 @@ using UnityEngine.UI;
 public class GameRoomLogic : MonoBehaviourPunCallbacks
 {
     public TMPro.TMP_Text playerList, roomName;
-    public GameObject startGame;
-    public Button readyButton;
+    public Button leaveButton, startGame;
     // Start is called before the first frame update
 
     private bool startGameWhenAllAreReady = false;
@@ -23,41 +22,86 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     {
         CustomLogger.Log($"Game room logic started.");
         StartupRoom();
-        var button = startGame.GetComponent<Button>();
 
-        readyButton.onClick.AddListener(() =>
+
+        leaveButton.onClick.AddListener(() =>
         {
-            PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { [Constants.PlayerReady] = true });
-            readyButton.interactable = false;
+            CustomLogger.Log($"Leaving Room {PhotonNetwork.CurrentRoom.Name}");
+            PhotonNetwork.LeaveRoom(true);
+            PhotonNetwork.SendAllOutgoingCommands();
         });
 
         if (PhotonNetwork.IsMasterClient)
         {
             CustomLogger.Log($"Client is master client, setting button to be a start button.");
-            button.onClick.AddListener(() =>
-            {
-                startGameWhenAllAreReady = true;
-                button.interactable = false;
-                readyButton.interactable = false;
-                PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { [Constants.PlayerReady] = true });
-            });
         }
         else
         {
             CustomLogger.Log($"Client is not the master client, setting button to be a leave button.");
-            var text = button.GetComponentInChildren<TMPro.TMP_Text>();
-            text.text = "Leave";
-            button.onClick.AddListener(() =>
-            {
-                PhotonNetwork.LeaveRoom();
-                SceneManager.LoadScene("CreateGame");
-            });
+            var text = startGame.GetComponentInChildren<TMPro.TMP_Text>();
+            text.text = "Ready";
         }
+
+        startGame.onClick.AddListener(() =>
+            {
+                PhotonNetwork.LocalPlayer.SetCustomProperties(new ExitGames.Client.Photon.Hashtable { [Constants.PlayerReady] = true });
+                
+                // Disable the button so we don't keep clicking it.
+                startGame.interactable = false;
+                if (PhotonNetwork.IsMasterClient)
+                {
+
+                    
+                    startGameWhenAllAreReady = true;
+                }
+
+            });
+    }
+
+
+
+    public override void OnMasterClientSwitched(Player newPlayer)
+    {
+        if (newPlayer == PhotonNetwork.LocalPlayer)
+        {
+            CustomLogger.Log($"This client is the new master client.");
+            var text = startGame.GetComponentInChildren<TMPro.TMP_Text>();
+            text.text = "Start";
+        }
+        else
+        {
+            CustomLogger.Log($"This client is the new master client.");
+            var text = startGame.GetComponentInChildren<TMPro.TMP_Text>();
+            text.text = "Ready";
+        }
+        startGameWhenAllAreReady = false;
+    }
+
+    public override void OnConnectedToMaster()
+    {
+        CustomLogger.Log($"Back on master so we can do matchmaking.");
+        PhotonNetwork.JoinLobby();
+        base.OnConnectedToMaster();
+    }
+
+    public override void OnLeftRoom()
+    {
+        CustomLogger.Log($"We have left the room.");
+        base.OnLeftRoom();
+    }
+
+    public override void OnJoinedLobby()
+    {
+        PhotonNetwork.LoadLevel("GameLobby");
+        base.OnJoinedLobby();
     }
 
     private static bool CheckAllPlayersAreReady()
     {
         bool allPlayersReady = true;
+        if (PhotonNetwork.CurrentRoom.Players.Count <= 1)
+            return false;
+
         foreach (var item in PhotonNetwork.CurrentRoom.Players)
         {
             if (item.Value.CustomProperties.ContainsKey(Constants.PlayerReady))
@@ -94,18 +138,6 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
         UpdatePlayerList();
     }
 
-    public override void OnConnected()
-    {
-        CustomLogger.Log($"On connected called");
-        base.OnConnected();
-    }
-
-    public override void OnConnectedToMaster()
-    {
-        CustomLogger.Log($"On connected to master called");
-        base.OnConnectedToMaster();
-    }
-
     public override void OnJoinedRoom()
     {
         CustomLogger.Log($"On joined room called");
@@ -122,6 +154,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
         base.OnJoinRoomFailed(returnCode, message);
     }
 
+
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
         CustomLogger.Log($"{newPlayer} joined room {PhotonNetwork.CurrentRoom.Name}");
@@ -132,7 +165,7 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
     public override void OnPlayerLeftRoom(Photon.Realtime.Player newPlayer)
     {
         CustomLogger.Log($"{newPlayer} left room {PhotonNetwork.CurrentRoom.Name}");
-        
+
         UpdatePlayerList();
         base.OnPlayerLeftRoom(newPlayer);
     }
@@ -154,18 +187,17 @@ public class GameRoomLogic : MonoBehaviourPunCallbacks
         }
         playerList.text = playersInGame.ToString();
 
+        // Check to see if the master client has clicked the start button.
         if (!startGameWhenAllAreReady)
         {
             // Only allow us to start a game with more than one player
             if (PhotonNetwork.CurrentRoom.PlayerCount >= 2 && PhotonNetwork.IsMasterClient)
             {
-                var button = startGame.GetComponent<Button>();
-                button.interactable = true;
+                startGame.interactable = true;
             }
             else if (PhotonNetwork.CurrentRoom.PlayerCount < 2 && PhotonNetwork.IsMasterClient)
             {
-                var button = startGame.GetComponent<Button>();
-                button.interactable = false;
+                startGame.interactable = false;
             }
         }
         else
